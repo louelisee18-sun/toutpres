@@ -2,169 +2,213 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Abidjan Nav - Recherche Directe</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Abidjan Nav Pro - Temps Réel</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #f4f4f4; }
-        #map { flex-grow: 1; width: 100%; }
+        /* Réinitialisation complète pour mobile */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; background: #f8f9fa; overflow: hidden; }
         
+        #map { flex-grow: 1; width: 100%; z-index: 1; }
+
+        /* Panneau d'informations haut (KM / MIN) */
         .info-nav { 
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-            width: 85%; background: white; padding: 12px; border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000; display: none;
+            width: 90%; background: white; padding: 15px; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25); z-index: 2000;
+            display: none; text-align: center; border-bottom: 4px solid #27ae60;
+        }
+        .stats { display: flex; justify-content: space-around; font-weight: bold; font-size: 1.3em; color: #2c3e50; margin-top: 5px; }
+
+        /* Bouton Centrer sur moi */
+        .btn-center {
+            position: absolute; bottom: 230px; right: 20px;
+            background: white; border: none; width: 55px; height: 55px;
+            border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 1000; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
 
-        .ui-panel { padding: 15px; background: #fff; border-radius: 20px 20px 0 0; z-index: 1001; box-shadow: 0 -5px 10px rgba(0,0,0,0.05); }
+        /* Panneau de contrôle bas */
+        .ui-panel { padding: 20px; background: #ffffff; border-radius: 25px 25px 0 0; z-index: 1001; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
         
-        /* Style de la barre de recherche */
-        .search-box { position: relative; margin-bottom: 10px; }
-        input#searchName { width: 94%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; }
+        .search-box { position: relative; width: 100%; margin-bottom: 12px; }
+        input#searchName { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; outline: none; }
+        
+        /* Suggestions de recherche */
         .suggestions { 
             position: absolute; bottom: 100%; left: 0; width: 100%; 
-            background: white; border: 1px solid #ddd; border-radius: 8px; 
-            max-height: 150px; overflow-y: auto; z-index: 2000; display: none;
+            background: white; border: 1px solid #ddd; border-radius: 10px; 
+            max-height: 200px; overflow-y: auto; z-index: 3000; display: none; margin-bottom: 5px;
         }
-        .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .suggestion-item { padding: 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer; font-size: 15px; }
+        .suggestion-item:active { background: #f0f0f0; }
 
-        .stats { display: flex; justify-content: space-around; font-weight: bold; font-size: 1.2em; color: #2c3e50; }
-        button.main-btn { background: #000; color: #ffcc00; border: none; padding: 15px; border-radius: 8px; font-weight: bold; width: 100%; }
-        .btn-center { position: absolute; bottom: 220px; right: 20px; background: white; border: none; width: 50px; height: 50px; border-radius: 50%; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        select { width: 100%; padding: 14px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; background: #fff; }
+        button.main-btn { background: #000000; color: #ffcc00; border: none; padding: 16px; border-radius: 10px; font-weight: bold; font-size: 16px; width: 100%; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* SOLUTION AU PROBLÈME DE TEXTE : On cache le panneau d'instructions de Leaflet */
+        .leaflet-routing-container, .leaflet-routing-error { display: none !important; visibility: hidden !important; opacity: 0 !important; }
     </style>
 </head>
 <body>
 
     <div class="info-nav" id="navPanel">
-        <div id="destName" style="font-weight: bold; color: #27ae60; text-align:center;"></div>
+        <div id="destName" style="font-weight: 800; color: #27ae60; font-size: 1.1em;"></div>
         <div class="stats">
-            <span id="kmRemaining">0 km</span>
-            <span id="minRemaining">0 min</span>
+            <span id="kmRemaining">-- km</span>
+            <span id="minRemaining">-- min</span>
         </div>
     </div>
 
     <div id="map"></div>
-    <button class="btn-center" onclick="centrerCarte()">🎯</button>
+
+    <button class="btn-center" onclick="centrerCarte()" title="Ma position">🎯</button>
 
     <div class="ui-panel">
         <div class="search-box">
             <div class="suggestions" id="suggestionList"></div>
-            <input type="text" id="searchName" placeholder="Rechercher un nom (ex: Pharmacie du Plateau...)" oninput="filtrerNoms()">
+            <input type="text" id="searchName" placeholder="Rechercher un nom précis..." oninput="filtrerNoms()" autocomplete="off">
         </div>
 
-        <select id="categorie" style="width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px;">
-            <option value="">-- Ou choisir une catégorie --</option>
+        <select id="categorie">
+            <option value="">-- Ou choisir par catégorie --</option>
             <option value="orange_money">Orange Money</option>
             <option value="pharmacie">Pharmacie</option>
             <option value="restaurant">Restaurant</option>
+            <option value="banque">Banque</option>
+            <option value="hopital">Hôpital</option>
+            <option value="ecole">École / Université</option>
+            <option value="supermarche">Supermarché</option>
         </select>
-        <button class="main-btn" onclick="lancerRecherche()">LANCER L'ITINÉRAIRE</button>
+        
+        <button class="main-btn" onclick="lancerRecherche()">Démarrer la navigation</button>
     </div>
 
-<script>
-    // 1. Initialisation de la carte
-    const map = L.map('map', { zoomControl: false }).setView([5.3484, -4.0305], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    <script>
+        // Configuration initiale de la carte centrée sur Abidjan
+        const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.3484, -4.0305], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    let userPos = null, watchID = null, routingControl = null;
-    let tousLesLieux = [], lieuSelectionne = null;
+        let userPos = null, watchID = null, routingControl = null;
+        let tousLesLieux = [], lieuSelectionne = null;
 
-    // Marqueurs style Google Maps
-    let userMarker = L.circleMarker([0,0], { radius: 9, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
-    let destMarker = L.marker([0,0]).addTo(map);
+        // Marqueurs
+        let userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
+        let destMarker = L.marker([0,0]).addTo(map);
 
-    // 2. Chargement des données
-    async function chargerDonnees() {
-        try {
-            const reponse = await fetch('./lieux.json');
-            tousLesLieux = await reponse.json();
-        } catch(e) { console.error("Erreur de chargement JSON"); }
-    }
-    chargerDonnees();
-
-    // 3. Suggestions de recherche
-    function filtrerNoms() {
-        const input = document.getElementById('searchName').value.toLowerCase();
-        const list = document.getElementById('suggestionList');
-        list.innerHTML = '';
-        
-        if (input.length < 2) { list.style.display = 'none'; return; }
-
-        const matches = tousLesLieux.filter(l => l.nom.toLowerCase().includes(input));
-        
-        if (matches.length > 0) {
-            list.style.display = 'block';
-            matches.forEach(m => {
-                const div = document.createElement('div');
-                div.className = 'suggestion-item';
-                div.innerText = m.nom;
-                div.onclick = () => {
-                    document.getElementById('searchName').value = m.nom;
-                    lieuSelectionne = m;
-                    list.style.display = 'none';
-                };
-                list.appendChild(div);
-            });
+        // Charger les données depuis lieux.json
+        async function chargerDonnees() {
+            try {
+                const reponse = await fetch('./lieux.json');
+                tousLesLieux = await reponse.json();
+                console.log("Système prêt : " + tousLesLieux.length + " lieux chargés.");
+            } catch(e) { 
+                alert("Erreur : Assurez-vous que lieux.json est bien présent sur GitHub.");
+            }
         }
-    }
+        chargerDonnees();
 
-    function centrerCarte() { if (userPos) map.setView(userPos, 16); }
+        // Système de suggestions
+        function filtrerNoms() {
+            const input = document.getElementById('searchName').value.toLowerCase();
+            const list = document.getElementById('suggestionList');
+            list.innerHTML = '';
+            
+            if (input.length < 2) { list.style.display = 'none'; return; }
 
-    // 4. Lancement de la navigation
-    function lancerRecherche() {
-        const cat = document.getElementById('categorie').value;
-        const nomInput = document.getElementById('searchName').value;
-
-        if (navigator.geolocation) {
-            if (watchID) navigator.geolocation.clearWatch(watchID);
-
-            watchID = navigator.geolocation.watchPosition(pos => {
-                userPos = [pos.coords.latitude, pos.coords.longitude];
-                userMarker.setLatLng(userPos);
-
-                let cible = null;
-
-                if (lieuSelectionne && nomInput === lieuSelectionne.nom) {
-                    cible = lieuSelectionne;
-                } else if (cat !== "") {
-                    const listeFiltree = tousLesLieux.filter(l => l.cat === cat);
-                    let minD = Infinity;
-                    listeFiltree.forEach(l => {
-                        const d = Math.hypot(l.lat - userPos[0], l.lng - userPos[1]);
-                        if (d < minD) { minD = d; cible = l; }
-                    });
-                }
-
-                if (cible) tracerRoute(userPos, cible);
-            }, null, { enableHighAccuracy: true });
+            const matches = tousLesLieux.filter(l => l.nom.toLowerCase().includes(input));
+            
+            if (matches.length > 0) {
+                list.style.display = 'block';
+                matches.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    div.innerText = m.nom;
+                    div.onclick = () => {
+                        document.getElementById('searchName').value = m.nom;
+                        lieuSelectionne = m;
+                        list.style.display = 'none';
+                    };
+                    list.appendChild(div);
+                });
+            } else {
+                list.style.display = 'none';
+            }
         }
-    }
 
-    // 5. La fonction qui dessine la route SANS le texte
-    function tracerRoute(depart, arrivee) {
-        destMarker.setLatLng([arrivee.lat, arrivee.lng]);
-        document.getElementById('destName').innerText = arrivee.nom;
-        document.getElementById('navPanel').style.display = "block";
+        function centrerCarte() { 
+            if (userPos) {
+                map.setView(userPos, 17, { animate: true });
+            } else {
+                alert("GPS en attente de signal...");
+            }
+        }
 
-        if (routingControl) map.removeControl(routingControl);
+        // Logique de navigation
+        function lancerRecherche() {
+            const cat = document.getElementById('categorie').value;
+            const nomInput = document.getElementById('searchName').value;
 
-        routingControl = L.Routing.control({
-            waypoints: [L.latLng(depart[0], depart[1]), L.latLng(arrivee.lat, arrivee.lng)],
-            createMarker: () => null,
-            addWaypoints: false,
-            draggableWaypoints: false,
-            show: false, // DESACTIVE LE PANNEAU DE TEXTE
-            itineraryClassName: 'hidden-itinerary', // CLASSE CSS POUR CACHER
-            lineOptions: { styles: [{ color: '#27ae60', weight: 7 }] } // LIGNE VERTE
-        }).on('routesfound', e => {
-            const r = e.routes[0];
-            document.getElementById('kmRemaining').innerText = (r.summary.totalDistance / 1000).toFixed(1) + " km";
-            document.getElementById('minRemaining').innerText = Math.round(r.summary.totalTime / 60) + " min";
-        }).addTo(map);
-    }
-</script>
+            if (navigator.geolocation) {
+                // On nettoie les anciennes sessions
+                if (watchID) navigator.geolocation.clearWatch(watchID);
+                if (routingControl) map.removeControl(routingControl);
+
+                watchID = navigator.geolocation.watchPosition(pos => {
+                    userPos = [pos.coords.latitude, pos.coords.longitude];
+                    userMarker.setLatLng(userPos);
+
+                    let cible = null;
+
+                    // Choix de la cible (Priorité Recherche > Catégorie)
+                    if (lieuSelectionne && nomInput.toLowerCase() === lieuSelectionne.nom.toLowerCase()) {
+                        cible = lieuSelectionne;
+                    } else if (cat !== "") {
+                        const listeFiltree = tousLesLieux.filter(l => l.cat === cat);
+                        if(listeFiltree.length === 0) return;
+
+                        let minD = Infinity;
+                        listeFiltree.forEach(l => {
+                            const d = Math.hypot(l.lat - userPos[0], l.lng - userPos[1]);
+                            if (d < minD) { minD = d; cible = l; }
+                        });
+                    }
+
+                    if (cible) {
+                        tracerRoute(userPos, cible);
+                    }
+                }, err => {
+                    alert("Erreur GPS : Veuillez activer la localisation.");
+                }, { enableHighAccuracy: true });
+            }
+        }
+
+        function tracerRoute(depart, arrivee) {
+            destMarker.setLatLng([arrivee.lat, arrivee.lng]).bindPopup(arrivee.nom);
+            document.getElementById('destName').innerText = "📍 " + arrivee.nom;
+            document.getElementById('navPanel').style.display = "block";
+
+            if (routingControl) map.removeControl(routingControl);
+
+            routingControl = L.Routing.control({
+                waypoints: [L.latLng(depart[0], depart[1]), L.latLng(arrivee.lat, arrivee.lng)],
+                createMarker: () => null,
+                addWaypoints: false,
+                draggableWaypoints: false,
+                show: false, // Cache le panneau de directions textuelles
+                lineOptions: { styles: [{ color: '#27ae60', weight: 7, opacity: 0.9 }] }
+            }).on('routesfound', e => {
+                const r = e.routes[0];
+                // Mise à jour KM et MIN en temps réel
+                document.getElementById('kmRemaining').innerText = (r.summary.totalDistance / 1000).toFixed(1) + " km";
+                document.getElementById('minRemaining').innerText = Math.round(r.summary.totalTime / 60) + " min";
+            }).addTo(map);
+        }
+    </script>
 </body>
 </html>
