@@ -1,0 +1,7 @@
+[
+    { "cat": "orange_money", "nom": "Agence Plateau Chardy", "lat": 5.3245, "lng": -4.0195 },
+    { "cat": "pharmacie", "nom": "Pharmacie du Plateau", "lat": 5.3270, "lng": -4.0200 },
+    { "cat": "restaurant", "nom": "Chez Claire Marcory", "lat": 5.3010, "lng": -3.9850 },
+    { "cat": "eglise", "nom": "Cathédrale St Paul", "lat": 5.3285, "lng": -4.0205 },
+    { "cat": "ecole", "nom": "Externat St Paul", "lat": 5.3290, "lng": -4.0215 }
+]
