@@ -64,100 +64,107 @@
         <button class="main-btn" onclick="lancerRecherche()">LANCER L'ITINÉRAIRE</button>
     </div>
 
-    <script>
-        const map = L.map('map', { zoomControl: false }).setView([5.3484, -4.0305], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+<script>
+    // 1. Initialisation de la carte
+    const map = L.map('map', { zoomControl: false }).setView([5.3484, -4.0305], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        let userPos = null, watchID = null, routingControl = null;
-        let tousLesLieux = [], lieuSelectionne = null;
+    let userPos = null, watchID = null, routingControl = null;
+    let tousLesLieux = [], lieuSelectionne = null;
 
-        let userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
-        let destMarker = L.marker([0,0]).addTo(map);
+    // Marqueurs style Google Maps
+    let userMarker = L.circleMarker([0,0], { radius: 9, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
+    let destMarker = L.marker([0,0]).addTo(map);
 
-        async function chargerDonnees() {
+    // 2. Chargement des données
+    async function chargerDonnees() {
+        try {
             const reponse = await fetch('./lieux.json');
             tousLesLieux = await reponse.json();
+        } catch(e) { console.error("Erreur de chargement JSON"); }
+    }
+    chargerDonnees();
+
+    // 3. Suggestions de recherche
+    function filtrerNoms() {
+        const input = document.getElementById('searchName').value.toLowerCase();
+        const list = document.getElementById('suggestionList');
+        list.innerHTML = '';
+        
+        if (input.length < 2) { list.style.display = 'none'; return; }
+
+        const matches = tousLesLieux.filter(l => l.nom.toLowerCase().includes(input));
+        
+        if (matches.length > 0) {
+            list.style.display = 'block';
+            matches.forEach(m => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.innerText = m.nom;
+                div.onclick = () => {
+                    document.getElementById('searchName').value = m.nom;
+                    lieuSelectionne = m;
+                    list.style.display = 'none';
+                };
+                list.appendChild(div);
+            });
         }
-        chargerDonnees();
+    }
 
-        // 1. Fonction de suggestions en temps réel
-        function filtrerNoms() {
-            const input = document.getElementById('searchName').value.toLowerCase();
-            const list = document.getElementById('suggestionList');
-            list.innerHTML = '';
-            
-            if (input.length < 2) { list.display = 'none'; return; }
+    function centrerCarte() { if (userPos) map.setView(userPos, 16); }
 
-            const matches = tousLesLieux.filter(l => l.nom.toLowerCase().includes(input));
-            
-            if (matches.length > 0) {
-                list.style.display = 'block';
-                matches.forEach(m => {
-                    const div = document.createElement('div');
-                    div.className = 'suggestion-item';
-                    div.innerText = m.nom;
-                    div.onclick = () => {
-                        document.getElementById('searchName').value = m.nom;
-                        lieuSelectionne = m;
-                        list.style.display = 'none';
-                    };
-                    list.appendChild(div);
-                });
-            }
+    // 4. Lancement de la navigation
+    function lancerRecherche() {
+        const cat = document.getElementById('categorie').value;
+        const nomInput = document.getElementById('searchName').value;
+
+        if (navigator.geolocation) {
+            if (watchID) navigator.geolocation.clearWatch(watchID);
+
+            watchID = navigator.geolocation.watchPosition(pos => {
+                userPos = [pos.coords.latitude, pos.coords.longitude];
+                userMarker.setLatLng(userPos);
+
+                let cible = null;
+
+                if (lieuSelectionne && nomInput === lieuSelectionne.nom) {
+                    cible = lieuSelectionne;
+                } else if (cat !== "") {
+                    const listeFiltree = tousLesLieux.filter(l => l.cat === cat);
+                    let minD = Infinity;
+                    listeFiltree.forEach(l => {
+                        const d = Math.hypot(l.lat - userPos[0], l.lng - userPos[1]);
+                        if (d < minD) { minD = d; cible = l; }
+                    });
+                }
+
+                if (cible) tracerRoute(userPos, cible);
+            }, null, { enableHighAccuracy: true });
         }
+    }
 
-        function centrerCarte() { if (userPos) map.setView(userPos, 16); }
+    // 5. La fonction qui dessine la route SANS le texte
+    function tracerRoute(depart, arrivee) {
+        destMarker.setLatLng([arrivee.lat, arrivee.lng]);
+        document.getElementById('destName').innerText = arrivee.nom;
+        document.getElementById('navPanel').style.display = "block";
 
-        function lancerRecherche() {
-            const cat = document.getElementById('categorie').value;
-            const nomInput = document.getElementById('searchName').value;
+        if (routingControl) map.removeControl(routingControl);
 
-            if (routingControl) map.removeControl(routingControl);
-            
-            if (navigator.geolocation) {
-                if (watchID) navigator.geolocation.clearWatch(watchID);
-
-                watchID = navigator.geolocation.watchPosition(pos => {
-                    userPos = [pos.coords.latitude, pos.coords.longitude];
-                    userMarker.setLatLng(userPos);
-
-                    let cible = null;
-
-                    // Priorité : Nom sélectionné > Catégorie la plus proche
-                    if (lieuSelectionne && nomInput === lieuSelectionne.nom) {
-                        cible = lieuSelectionne;
-                    } else if (cat !== "") {
-                        const listeFiltree = tousLesLieux.filter(l => l.cat === cat);
-                        let minD = Infinity;
-                        listeFiltree.forEach(l => {
-                            const d = Math.hypot(l.lat - userPos[0], l.lng - userPos[1]);
-                            if (d < minD) { minD = d; cible = l; }
-                        });
-                    }
-
-                    if (cible) {
-                        tracerRoute(userPos, cible);
-                    }
-                }, null, { enableHighAccuracy: true });
-            }
-        }
-
-        function tracerRoute(depart, arrivee) {
-            destMarker.setLatLng([arrivee.lat, arrivee.lng]);
-            document.getElementById('destName').innerText = arrivee.nom;
-            document.getElementById('navPanel').style.display = "block";
-
-            if (routingControl) map.removeControl(routingControl);
-            routingControl = L.Routing.control({
-                waypoints: [L.latLng(depart[0], depart[1]), L.latLng(arrivee.lat, arrivee.lng)],
-                createMarker: () => null,
-                lineOptions: { styles: [{ color: '#000', weight: 6 }] }
-            }).on('routesfound', e => {
-                const r = e.routes[0];
-                document.getElementById('kmRemaining').innerText = (r.summary.totalDistance / 1000).toFixed(1) + " km";
-                document.getElementById('minRemaining').innerText = Math.round(r.summary.totalTime / 60) + " min";
-            }).addTo(map);
-        }
-    </script>
+        routingControl = L.Routing.control({
+            waypoints: [L.latLng(depart[0], depart[1]), L.latLng(arrivee.lat, arrivee.lng)],
+            createMarker: () => null,
+            addWaypoints: false,
+            draggableWaypoints: false,
+            show: false, // DESACTIVE LE PANNEAU DE TEXTE
+            itineraryClassName: 'hidden-itinerary', // CLASSE CSS POUR CACHER
+            lineOptions: { styles: [{ color: '#27ae60', weight: 7 }] } // LIGNE VERTE
+        }).on('routesfound', e => {
+            const r = e.routes[0];
+            document.getElementById('kmRemaining').innerText = (r.summary.totalDistance / 1000).toFixed(1) + " km";
+            document.getElementById('minRemaining').innerText = Math.round(r.summary.totalTime / 60) + " min";
+        }).addTo(map);
+    }
+</script>
 </body>
 </html>
