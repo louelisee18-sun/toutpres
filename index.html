@@ -10,67 +10,163 @@
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <style>
-        :root { --primary: #27ae60; --premium: #f1c40f; --dark: #1a1a1a; --text: #333; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7f6; height: 100vh; overflow: hidden; }
+        :root { 
+            --primary: #27ae60; 
+            --premium: #f1c40f; 
+            --dark: #1a1a1a; 
+            --bg: #f8f9fa;
+        }
+
+        /* Empêche le défilement bizarre sur mobile */
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background: var(--bg);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* Structure Flexible */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+        }
+
+        /* Carte : prend tout l'espace disponible */
+        #map { 
+            flex: 1; 
+            width: 100%;
+            z-index: 1;
+        }
+
+        /* Barre d'infos en haut (toujours visible si active) */
+        .top-info {
+            position: absolute;
+            top: 10px;
+            left: 5%;
+            width: 90%;
+            z-index: 1000;
+            display: none;
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+
+        /* Panneau de recherche en bas */
+        .bottom-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 25px 25px 0 0;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+            z-index: 1001;
+            box-sizing: border-box;
+        }
+
+        /* Style des inputs Responsive */
+        .input-group { margin-bottom: 10px; position: relative; }
         
+        input, select {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #eee;
+            background: #fdfdfd;
+            font-size: 16px;
+            box-sizing: border-box; /* Crucial pour le responsive */
+            outline: none;
+        }
+
+        button.btn-main {
+            width: 100%;
+            padding: 16px;
+            background: var(--dark);
+            color: var(--premium);
+            border: none;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 16px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        /* Fiche Business (Yango Style) */
+        .business-card {
+            display: none;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .wa-button {
+            display: block;
+            background: #25D366;
+            color: white;
+            text-decoration: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        /* SUPPRESSION DU BUG DE TA PHOTO */
+        .leaflet-routing-container, .leaflet-routing-error {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         /* Loader */
-        #loader { position: fixed; inset: 0; background: #fff; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        #loader {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.9);
+            z-index: 9999; display: none; flex-direction: column; 
+            align-items: center; justify-content: center;
+        }
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* UI Elements */
-        #map { position: absolute; inset: 0; z-index: 1; }
-        .search-container { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 92%; z-index: 1000; }
-        .card { background: white; padding: 15px; border-radius: 18px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
-        
-        /* Publicité contextuelle */
-        #adBox { display: none; background: #fff9e6; border: 1px dashed var(--premium); padding: 10px; border-radius: 10px; margin-top: 10px; font-size: 13px; color: #856404; text-align: center; animation: slideDown 0.5s; }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Fiche Commerçant */
-        #businessCard { display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 92%; background: white; border-radius: 20px; padding: 15px; z-index: 2000; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); }
-        .btn-wa { background: #25D366; color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; font-weight: bold; margin-top: 10px; text-decoration: none; display: block; text-align: center; }
-        
-        .badge-premium { background: var(--premium); color: #000; padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; margin-left: 5px; }
-        
-        input, select { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #eee; margin-bottom: 8px; font-size: 15px; box-sizing: border-box; }
-        .btn-main { background: var(--dark); color: var(--premium); border: none; padding: 16px; border-radius: 10px; width: 100%; font-weight: 800; }
-        
-        .leaflet-routing-container { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div id="loader"><div class="spinner"></div><p>Analyse de la zone...</p></div>
-
-    <div class="search-container" id="uiSearch">
-        <div class="card">
-            <h3 style="margin:0 0 10px 0; font-size: 18px;">Où souhaitez-vous aller ?</h3>
-            <input type="text" id="searchName" placeholder="Ex: Pharmacie, Agence..." oninput="filtrerNoms()">
-            <select id="categorie">
-                <option value="">Toutes les catégories</option>
-                <option value="orange_money">Orange Money</option>
-                <option value="pharmacie">Pharmacie</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="banque">Banque</option>
-            </select>
-            <button class="btn-main" onclick="lancerStrategie()">TROUVER LE MEILLEUR SERVICE</button>
-            <div id="adBox">✨ <b>Promo :</b> -15% chez notre partenaire à proximité !</div>
-        </div>
+    <div id="loader">
+        <div class="spinner"></div>
+        <p>Calcul de l'itinéraire...</p>
     </div>
 
-    <div id="businessCard">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <span id="bizName" style="font-weight: 800; font-size: 18px;">Nom</span>
-                <span id="bizBadge"></span>
-                <div id="bizDist" style="color: var(--primary); font-weight: bold; font-size: 14px;">-- km ( -- min )</div>
+    <div class="app-container">
+        <div id="topNav" class="top-info">
+            <b id="destTitle">Destination</b><br>
+            <span id="routeStats" style="color:var(--primary); font-weight:bold;">-- km (-- min)</span>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="bottom-panel">
+            <div id="searchForm">
+                <div class="input-group">
+                    <input type="text" id="searchName" placeholder="Nom du lieu..." oninput="filtrerNoms()">
+                </div>
+                <div class="input-group">
+                    <select id="categorie">
+                        <option value="">Toutes les catégories</option>
+                        <option value="pharmacie">Pharmacie</option>
+                        <option value="orange_money">Orange Money</option>
+                        <option value="restaurant">Restaurant</option>
+                    </select>
+                </div>
+                <button class="btn-main" onclick="lancerCalcul()">Lancer l'itinéraire</button>
+            </div>
+
+            <div id="bizResult" class="business-card">
+                <h3 id="bizName" style="margin:0;">Nom du lieu</h3>
+                <div id="bizTime" style="color:var(--primary); font-weight:bold; margin:5px 0;">-- min</div>
+                <a id="waLink" href="#" class="wa-button">COMMANDER VIA WHATSAPP</a>
+                <button onclick="location.reload()" style="background:none; border:none; color:gray; margin-top:10px; font-size:12px;">Nouvelle recherche</button>
             </div>
         </div>
-        <a id="waLink" class="btn-wa" target="_blank">💬 COMMANDER VIA WHATSAPP</a>
     </div>
-
-    <div id="map"></div>
 
     <script>
         const map = L.map('map', { zoomControl: false }).setView([5.3484, -4.0305], 13);
@@ -79,75 +175,70 @@
         let userPos = null, routingControl = null, tousLesLieux = [];
 
         async function chargerDonnees() {
-            const resp = await fetch('./lieux.json');
-            tousLesLieux = await resp.json();
+            try {
+                const resp = await fetch('./lieux.json');
+                tousLesLieux = await resp.json();
+            } catch(e) { console.error("Fichier lieux.json introuvable"); }
         }
         chargerDonnees();
 
-        function lancerStrategie() {
+        function lancerCalcul() {
             document.getElementById('loader').style.display = 'flex';
-            setTimeout(calculerProximiteBusiness, 1200);
-        }
-
-        function calculerProximiteBusiness() {
-            const cat = document.getElementById('categorie').value;
-            const search = document.getElementById('searchName').value.toLowerCase();
-
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(pos => {
                     userPos = [pos.coords.latitude, pos.coords.longitude];
-                    
-                    // STRATÉGIE 1 : Filtrage avec Priorité Premium
-                    let matches = tousLesLieux.filter(l => 
-                        (cat === "" || l.cat === cat) && 
-                        (search === "" || l.nom.toLowerCase().includes(search))
-                    );
-
-                    if (matches.length > 0) {
-                        // On trie par distance, mais on fait remonter les Premium
-                        matches.sort((a, b) => {
-                            const distA = Math.hypot(a.lat - userPos[0], a.lng - userPos[1]);
-                            const distB = Math.hypot(b.lat - userPos[0], b.lng - userPos[1]);
-                            if (a.premium && !b.premium) return -1;
-                            if (!a.premium && b.premium) return 1;
-                            return distA - distB;
-                        });
-
-                        const cible = matches[0];
-                        afficherBusiness(cible);
-                    } else {
-                        document.getElementById('loader').style.display = 'none';
-                        alert("Aucun service trouvé.");
-                    }
-                });
+                    trouverCible();
+                }, () => { alert("Activez le GPS"); document.getElementById('loader').style.display='none'; });
             }
         }
 
-        function afficherBusiness(lieu) {
+        function trouverCible() {
+            const cat = document.getElementById('categorie').value;
+            const search = document.getElementById('searchName').value.toLowerCase();
+
+            let matches = tousLesLieux.filter(l => 
+                (cat === "" || l.cat === cat) && (search === "" || l.nom.toLowerCase().includes(search))
+            );
+
+            if (matches.length > 0) {
+                // Tri par proximité
+                matches.sort((a,b) => {
+                    const dA = Math.hypot(a.lat - userPos[0], a.lng - userPos[1]);
+                    const dB = Math.hypot(b.lat - userPos[0], b.lng - userPos[1]);
+                    return dA - dB;
+                });
+                afficherTrajet(matches[0]);
+            } else {
+                alert("Rien trouvé");
+                document.getElementById('loader').style.display='none';
+            }
+        }
+
+        function afficherTrajet(lieu) {
             document.getElementById('loader').style.display = 'none';
-            document.getElementById('uiSearch').style.display = 'none';
-            document.getElementById('businessCard').style.display = 'block';
+            document.getElementById('searchForm').style.display = 'none';
+            document.getElementById('bizResult').style.display = 'block';
+            document.getElementById('topNav').style.display = 'block';
             
             document.getElementById('bizName').innerText = lieu.nom;
-            document.getElementById('bizBadge').innerHTML = lieu.premium ? '<span class="badge-premium">PREMIUM</span>' : '';
-            
-            // STRATÉGIE 2 : Publicité Contextuelle
-            if(lieu.premium) document.getElementById('adBox').style.display = 'block';
+            document.getElementById('destTitle').innerText = lieu.nom;
+            document.getElementById('waLink').href = `https://wa.me/${lieu.phone || '22500000000'}`;
 
-            // STRATÉGIE 3 : Conversion (WhatsApp)
-            document.getElementById('waLink').href = `https://wa.me/${lieu.phone || '22500000000'}?text=Bonjour, je vous ai trouvé via l'application.`;
-
-            // Itinéraire
             if (routingControl) map.removeControl(routingControl);
             routingControl = L.Routing.control({
                 waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(lieu.lat, lieu.lng)],
-                createMarker: () => null, show: false,
-                lineOptions: { styles: [{ color: '#27ae60', weight: 8 }] }
+                createMarker: () => null,
+                show: false,
+                lineOptions: { styles: [{ color: '#27ae60', weight: 6 }] }
             }).on('routesfound', e => {
                 const r = e.routes[0];
-                document.getElementById('bizDist').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
+                const d = (r.summary.totalDistance/1000).toFixed(1) + " km";
+                const t = Math.round(r.summary.totalTime/60) + " min";
+                document.getElementById('routeStats').innerText = `${d} (${t})`;
+                document.getElementById('bizTime').innerText = t;
             }).addTo(map);
-            map.setView(userPos, 15);
+
+            map.fitBounds([userPos, [lieu.lat, lieu.lng]], { padding: [50, 50] });
         }
     </script>
 </body>
