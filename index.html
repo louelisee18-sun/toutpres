@@ -199,4 +199,49 @@
                     );
 
                     if (matches.length > 0) {
-                        // Tri intelligent
+                        // Tri intelligent (Premium d'abord + Distance)
+                        matches.sort((a,b) => {
+                            if (a.premium && !b.premium) return -1;
+                            if (!a.premium && b.premium) return 1;
+                            return Math.hypot(a.lat - userPos[0], a.lng - userPos[1]) - Math.hypot(b.lat - userPos[0], b.lng - userPos[1]);
+                        });
+                        
+                        afficherResultat(matches[0]);
+                    } else {
+                        document.getElementById('loader').style.display = 'none';
+                        alert("Aucun résultat trouvé.");
+                    }
+                }, () => { 
+                    document.getElementById('loader').style.display = 'none';
+                    alert("Veuillez autoriser le GPS."); 
+                });
+            }
+        }
+
+        function afficherResultat(lieu) {
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('searchUI').style.display = 'none';
+            document.getElementById('bizUI').style.display = 'block';
+
+            document.getElementById('bizName').innerText = lieu.nom;
+            document.getElementById('bizPremium').innerHTML = lieu.premium ? '<span class="badge-premium">PREMIUM</span>' : '';
+            document.getElementById('waLink').href = `https://wa.me/${lieu.phone || '22500000000'}`;
+
+            if (routingControl) map.removeControl(routingControl);
+            
+            routingControl = L.Routing.control({
+                waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(lieu.lat, lieu.lng)],
+                createMarker: () => null,
+                show: false,
+                lineOptions: { styles: [{ color: '#27ae60', weight: 8, opacity: 0.8 }] }
+            }).on('routesfound', e => {
+                const r = e.routes[0];
+                document.getElementById('bizStats').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
+            }).addTo(map);
+
+            // Ajustement automatique du zoom pour voir tout le trajet
+            map.fitBounds([userPos, [lieu.lat, lieu.lng]], { padding: [80, 80] });
+        }
+    </script>
+</body>
+</html>
