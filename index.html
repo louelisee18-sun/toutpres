@@ -3,180 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Abidjan Proxi-Nav</title>
+    <title>Abidjan Nav Business Pro</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #fdfdfd; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        :root { --primary: #27ae60; --premium: #f1c40f; --dark: #1a1a1a; --text: #333; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7f6; height: 100vh; overflow: hidden; }
         
-        /* La carte est cachée par défaut */
-        #map { flex-grow: 1; width: 100%; display: none; z-index: 1; }
-
-        /* Écran de chargement animé */
-        #loader { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: white; z-index: 5000; flex-direction: column; align-items: center; justify-content: center; 
-        }
-        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #27ae60; border-radius: 50%; animation: spin 1s linear infinite; }
+        /* Loader */
+        #loader { position: fixed; inset: 0; background: #fff; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Panneau de recherche (visible au début) */
-        .ui-panel { padding: 30px 20px; background: white; z-index: 1001; transition: 0.3s; }
-        .ui-panel.minimized { padding: 10px 20px; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
-
-        .search-box { position: relative; margin-bottom: 15px; }
-        input#searchName, select { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; background: #f9f9f9; }
+        /* UI Elements */
+        #map { position: absolute; inset: 0; z-index: 1; }
+        .search-container { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 92%; z-index: 1000; }
+        .card { background: white; padding: 15px; border-radius: 18px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
         
-        .suggestions { position: absolute; bottom: 100%; left: 0; width: 100%; background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: none; z-index: 3000; }
-        .suggestion-item { padding: 12px; border-bottom: 1px solid #eee; }
+        /* Publicité contextuelle */
+        #adBox { display: none; background: #fff9e6; border: 1px dashed var(--premium); padding: 10px; border-radius: 10px; margin-top: 10px; font-size: 13px; color: #856404; text-align: center; animation: slideDown 0.5s; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-        button.main-btn { background: #000; color: #ffcc00; border: none; padding: 18px; border-radius: 12px; font-weight: bold; width: 100%; font-size: 16px; }
-
-        /* Infos trajet et bouton Google Maps */
-        .info-nav { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 90%; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 2000; display: none; text-align: center; }
-        .btn-gmaps { display: inline-block; margin-top: 10px; background: #4285F4; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-size: 14px; font-weight: bold; }
+        /* Fiche Commerçant */
+        #businessCard { display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 92%; background: white; border-radius: 20px; padding: 15px; z-index: 2000; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); }
+        .btn-wa { background: #25D366; color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; font-weight: bold; margin-top: 10px; text-decoration: none; display: block; text-align: center; }
+        
+        .badge-premium { background: var(--premium); color: #000; padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; margin-left: 5px; }
+        
+        input, select { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #eee; margin-bottom: 8px; font-size: 15px; box-sizing: border-box; }
+        .btn-main { background: var(--dark); color: var(--premium); border: none; padding: 16px; border-radius: 10px; width: 100%; font-weight: 800; }
         
         .leaflet-routing-container { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <p style="margin-top: 15px; font-weight: bold; color: #2c3e50;">Recherche du plus proche...</p>
+    <div id="loader"><div class="spinner"></div><p>Analyse de la zone...</p></div>
+
+    <div class="search-container" id="uiSearch">
+        <div class="card">
+            <h3 style="margin:0 0 10px 0; font-size: 18px;">Où souhaitez-vous aller ?</h3>
+            <input type="text" id="searchName" placeholder="Ex: Pharmacie, Agence..." oninput="filtrerNoms()">
+            <select id="categorie">
+                <option value="">Toutes les catégories</option>
+                <option value="orange_money">Orange Money</option>
+                <option value="pharmacie">Pharmacie</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="banque">Banque</option>
+            </select>
+            <button class="btn-main" onclick="lancerStrategie()">TROUVER LE MEILLEUR SERVICE</button>
+            <div id="adBox">✨ <b>Promo :</b> -15% chez notre partenaire à proximité !</div>
+        </div>
     </div>
 
-    <div class="info-nav" id="navPanel">
-        <div id="destName" style="font-weight: bold; color: #27ae60;"></div>
-        <div style="display:flex; justify-content: space-around; margin: 10px 0; font-size: 1.2em; font-weight: bold;">
-            <span id="kmRemaining">-- km</span>
-            <span id="minRemaining">-- min</span>
+    <div id="businessCard">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <span id="bizName" style="font-weight: 800; font-size: 18px;">Nom</span>
+                <span id="bizBadge"></span>
+                <div id="bizDist" style="color: var(--primary); font-weight: bold; font-size: 14px;">-- km ( -- min )</div>
+            </div>
         </div>
-        <a id="linkGmaps" class="btn-gmaps" target="_blank">Ouvrir dans Google Maps</a>
+        <a id="waLink" class="btn-wa" target="_blank">💬 COMMANDER VIA WHATSAPP</a>
     </div>
 
     <div id="map"></div>
-
-    <div class="ui-panel" id="mainPanel">
-        <h2 id="title" style="margin-top:0;">Bonjour, <br><span style="color:#27ae60;">Où allez-vous ?</span></h2>
-        
-        <div class="search-box">
-            <div class="suggestions" id="suggestionList"></div>
-            <input type="text" id="searchName" placeholder="Entrez un nom (ex: Pharmacie...)" oninput="filtrerNoms()" autocomplete="off">
-        </div>
-
-        <select id="categorie">
-            <option value="">-- Ou choisissez une catégorie --</option>
-            <option value="orange_money">Orange Money</option>
-            <option value="pharmacie">Pharmacie</option>
-            <option value="restaurant">Restaurant</option>
-            <option value="banque">Banque</option>
-        </select>
-        
-        <button class="main-btn" onclick="demarrerAction()">LANCER L'ITINÉRAIRE</button>
-    </div>
 
     <script>
         const map = L.map('map', { zoomControl: false }).setView([5.3484, -4.0305], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        let userPos = null, watchID = null, routingControl = null;
-        let tousLesLieux = [], lieuSelectionne = null;
-        let userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
+        let userPos = null, routingControl = null, tousLesLieux = [];
 
         async function chargerDonnees() {
-            const reponse = await fetch('./lieux.json');
-            tousLesLieux = await reponse.json();
+            const resp = await fetch('./lieux.json');
+            tousLesLieux = await resp.json();
         }
         chargerDonnees();
 
-        function filtrerNoms() {
-            const input = document.getElementById('searchName').value.toLowerCase();
-            const list = document.getElementById('suggestionList');
-            list.innerHTML = '';
-            if (input.length < 2) { list.style.display = 'none'; return; }
-            const matches = tousLesLieux.filter(l => l.nom.toLowerCase().includes(input));
-            if (matches.length > 0) {
-                list.style.display = 'block';
-                matches.forEach(m => {
-                    const div = document.createElement('div');
-                    div.className = 'suggestion-item';
-                    div.innerText = m.nom;
-                    div.onclick = () => { document.getElementById('searchName').value = m.nom; lieuSelectionne = m; list.style.display = 'none'; };
-                    list.appendChild(div);
-                });
-            }
-        }
-
-        function demarrerAction() {
-            // Afficher l'écran de chargement
+        function lancerStrategie() {
             document.getElementById('loader').style.display = 'flex';
-            
-            // Simuler un petit délai de recherche pour le design
-            setTimeout(() => {
-                lancerNavigation();
-            }, 1500);
+            setTimeout(calculerProximiteBusiness, 1200);
         }
 
-        function lancerNavigation() {
+        function calculerProximiteBusiness() {
             const cat = document.getElementById('categorie').value;
-            const nomInput = document.getElementById('searchName').value;
+            const search = document.getElementById('searchName').value.toLowerCase();
 
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(pos => {
                     userPos = [pos.coords.latitude, pos.coords.longitude];
                     
-                    let cible = null;
-                    if (lieuSelectionne && nomInput.toLowerCase() === lieuSelectionne.nom.toLowerCase()) {
-                        cible = lieuSelectionne;
-                    } else if (cat !== "") {
-                        const listeFiltree = tousLesLieux.filter(l => l.cat === cat);
-                        let minD = Infinity;
-                        listeFiltree.forEach(l => {
-                            const d = Math.hypot(l.lat - userPos[0], l.lng - userPos[1]);
-                            if (d < minD) { minD = d; cible = l; }
+                    // STRATÉGIE 1 : Filtrage avec Priorité Premium
+                    let matches = tousLesLieux.filter(l => 
+                        (cat === "" || l.cat === cat) && 
+                        (search === "" || l.nom.toLowerCase().includes(search))
+                    );
+
+                    if (matches.length > 0) {
+                        // On trie par distance, mais on fait remonter les Premium
+                        matches.sort((a, b) => {
+                            const distA = Math.hypot(a.lat - userPos[0], a.lng - userPos[1]);
+                            const distB = Math.hypot(b.lat - userPos[0], b.lng - userPos[1]);
+                            if (a.premium && !b.premium) return -1;
+                            if (!a.premium && b.premium) return 1;
+                            return distA - distB;
                         });
-                    }
 
-                    if (cible) {
-                        // Mise à jour interface
-                        document.getElementById('loader').style.display = 'none';
-                        document.getElementById('map').style.display = 'block';
-                        document.getElementById('title').style.display = 'none';
-                        document.getElementById('mainPanel').classList.add('minimized');
-                        document.getElementById('navPanel').style.display = 'block';
-                        
-                        // Configurer le lien Google Maps direct
-                        const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${cible.lat},${cible.lng}&travelmode=driving`;
-                        document.getElementById('linkGmaps').href = gmapsUrl;
-
-                        tracerRoute(userPos, cible);
-                        map.invalidateSize(); // Force la carte à se redessiner correctement
+                        const cible = matches[0];
+                        afficherBusiness(cible);
                     } else {
                         document.getElementById('loader').style.display = 'none';
-                        alert("Lieu non trouvé.");
+                        alert("Aucun service trouvé.");
                     }
                 });
             }
         }
 
-        function tracerRoute(depart, arrivee) {
+        function afficherBusiness(lieu) {
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('uiSearch').style.display = 'none';
+            document.getElementById('businessCard').style.display = 'block';
+            
+            document.getElementById('bizName').innerText = lieu.nom;
+            document.getElementById('bizBadge').innerHTML = lieu.premium ? '<span class="badge-premium">PREMIUM</span>' : '';
+            
+            // STRATÉGIE 2 : Publicité Contextuelle
+            if(lieu.premium) document.getElementById('adBox').style.display = 'block';
+
+            // STRATÉGIE 3 : Conversion (WhatsApp)
+            document.getElementById('waLink').href = `https://wa.me/${lieu.phone || '22500000000'}?text=Bonjour, je vous ai trouvé via l'application.`;
+
+            // Itinéraire
             if (routingControl) map.removeControl(routingControl);
             routingControl = L.Routing.control({
-                waypoints: [L.latLng(depart[0], depart[1]), L.latLng(arrivee.lat, arrivee.lng)],
-                createMarker: () => null,
-                show: false,
-                lineOptions: { styles: [{ color: '#27ae60', weight: 6 }] }
+                waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(lieu.lat, lieu.lng)],
+                createMarker: () => null, show: false,
+                lineOptions: { styles: [{ color: '#27ae60', weight: 8 }] }
             }).on('routesfound', e => {
                 const r = e.routes[0];
-                document.getElementById('kmRemaining').innerText = (r.summary.totalDistance / 1000).toFixed(1) + " km";
-                document.getElementById('minRemaining').innerText = Math.round(r.summary.totalTime / 60) + " min";
-                document.getElementById('destName').innerText = arrivee.nom;
+                document.getElementById('bizDist').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
             }).addTo(map);
-            map.setView(depart, 15);
+            map.setView(userPos, 15);
         }
     </script>
 </body>
