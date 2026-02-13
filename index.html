@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Abidjan Proximité</title>
+    <title>Navigation Proximité Abidjan</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -11,93 +11,108 @@
 
     <style>
         body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        #header { background: #2c3e50; color: white; padding: 15px; text-align: center; }
+        #header { background: #000; color: #ffcc00; padding: 10px; text-align: center; font-weight: bold; }
         #map { flex-grow: 1; width: 100%; }
-        .ui-panel { padding: 15px; background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); text-align: center; }
         
-        select, button { 
-            width: 90%; padding: 12px; margin: 5px 0; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; 
+        /* Panneau d'infos style Yango */
+        .info-nav { 
+            position: absolute; bottom: 100px; left: 5%; width: 80%; 
+            background: white; padding: 15px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 1000;
+            display: none; text-align: center;
         }
-        button { background: #27ae60; color: white; font-weight: bold; border: none; cursor: pointer; }
-        .leaflet-routing-container { display: none; }
+        .ui-panel { padding: 15px; background: #fff; text-align: center; z-index: 1001; }
+        .stats { display: flex; justify-content: space-around; font-weight: bold; font-size: 1.1em; color: #27ae60; }
+        
+        button { background: #ffcc00; color: #000; border: none; padding: 15px; border-radius: 8px; font-weight: bold; width: 100%; cursor: pointer; }
+        .leaflet-routing-container { display: none; } /* On cache les instructions écrites */
     </style>
 </head>
 <body>
 
-    <div id="header">ABIDJAN PROXIMITÉ</div>
+    <div id="header">ABIDJAN NAV - TEMPS RÉEL</div>
+    
     <div id="map"></div>
 
+    <div class="info-nav" id="navPanel">
+        <div id="destName" style="margin-bottom: 5px; font-weight: bold; border-bottom: 1px solid #eee;"></div>
+        <div class="stats">
+            <span id="kmRemaining">-- km</span>
+            <span id="minRemaining">-- min</span>
+        </div>
+    </div>
+
     <div class="ui-panel">
-        <label>Que cherchez-vous ?</label>
-        <select id="categorie">
+        <select id="categorie" style="width: 100%; padding: 10px; margin-bottom: 10px;">
             <option value="orange_money">Orange Money</option>
             <option value="pharmacie">Pharmacie</option>
             <option value="restaurant">Restaurant</option>
-            <option value="banque">Banque</option>
-            <option value="hopital">Hôpital</option>
         </select>
-        <button onclick="trouverLePlusProche()">TROUVER LE PLUS PROCHE</button>
-        <p id="info" style="font-size: 13px; color: #666;"></p>
+        <button onclick="demarrerNavigation()">LANCER LA NAVIGATION</button>
     </div>
 
     <script>
-        const map = L.map('map').setView([5.3484, -4.0305], 12);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        const map = L.map('map').setView([5.3484, -4.0305], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-let tousLesLieux = []; // On commence avec une liste vide
+        let userMarker = L.marker([0,0], {icon: L.icon({
+            iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+            iconSize: [30, 30]
+        })}).addTo(map);
 
-// FONCTION POUR CHARGER LES DONNÉES
-async function chargerDonnees() {
-    try {
-        const reponse = await fetch('lieux.json'); // On va chercher le fichier
-        tousLesLieux = await reponse.json();      // On transforme le texte en liste utilisable
-        console.log("Données chargées :", tousLesLieux.length, "lieux");
-    } catch (erreur) {
-        console.error("Erreur de chargement :", erreur);
-    }
-}
+        let destMarker = L.marker([0,0]).addTo(map);
+        let routingControl = null;
+        let tousLesLieux = [];
 
-// Appeler le chargement dès le départ
-chargerDonnees();
+        // Charger les données JSON
+        async function chargerDonnees() {
+            const reponse = await fetch('./lieux.json');
+            tousLesLieux = await reponse.json();
+        }
+        chargerDonnees();
 
-let routingControl = null;
+        function demarrerNavigation() {
+            if (navigator.geolocation) {
+                // watchPosition suit l'utilisateur en mouvement
+                navigator.geolocation.watchPosition(pos => {
+                    const uLat = pos.coords.latitude;
+                    const uLng = pos.coords.longitude;
 
-async function trouverLePlusProche() {
-    const choix = document.getElementById('categorie').value;
-    
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-            const uLat = pos.coords.latitude;
-            const uLng = pos.coords.longitude;
+                    // Mettre à jour position utilisateur
+                    userMarker.setLatLng([uLat, uLng]).bindPopup("Moi (En mouvement)").openPopup();
 
-            // Filtrer parmi les lieux chargés du fichier JSON
-            const listeFiltree = tousLesLieux.filter(l => l.cat === choix);
+                    const choix = document.getElementById('categorie').value;
+                    const listeFiltree = tousLesLieux.filter(l => l.cat === choix);
+                    
+                    if(listeFiltree.length > 0) {
+                        let proche = listeFiltree[0];
+                        let minD = Infinity;
+                        listeFiltree.forEach(l => {
+                            const d = Math.hypot(l.lat - uLat, l.lng - uLng);
+                            if (d < minD) { minD = d; proche = l; }
+                        });
 
-            if (listeFiltree.length === 0) {
-                alert("Aucun résultat pour cette catégorie.");
-                return;
+                        // Mettre à jour destination
+                        destMarker.setLatLng([proche.lat, proche.lng]).bindPopup(proche.nom);
+                        document.getElementById('destName').innerText = "Vers : " + proche.nom;
+                        document.getElementById('navPanel').style.display = "block";
+
+                        // Calcul itinéraire
+                        if (routingControl) map.removeControl(routingControl);
+                        routingControl = L.Routing.control({
+                            waypoints: [L.latLng(uLat, uLng), L.latLng(proche.lat, proche.lng)],
+                            createMarker: function() { return null; },
+                            lineOptions: { styles: [{ color: '#007bff', weight: 6 }] }
+                        }).on('routesfound', function(e) {
+                            const route = e.routes[0];
+                            // Mise à jour km et minutes (Yango style)
+                            document.getElementById('kmRemaining').innerText = (route.summary.totalDistance / 1000).toFixed(1) + " km";
+                            document.getElementById('minRemaining').innerText = Math.round(route.summary.totalTime / 60) + " min";
+                        }).addTo(map);
+                    }
+                }, err => console.error(err), { enableHighAccuracy: true });
             }
-
-            let proche = listeFiltree[0];
-            let minD = Infinity;
-
-            listeFiltree.forEach(l => {
-                const d = Math.hypot(l.lat - uLat, l.lng - uLng);
-                if (d < minD) { minD = d; proche = l; }
-            });
-
-            // Tracer l'itinéraire (même logique qu'avant)
-            if (routingControl) map.removeControl(routingControl);
-            routingControl = L.Routing.control({
-                waypoints: [L.latLng(uLat, uLng), L.latLng(proche.lat, proche.lng)],
-                lineOptions: { styles: [{ color: '#27ae60', weight: 6 }] },
-                createMarker: function() { return null; }
-            }).addTo(map);
-
-            document.getElementById('info').innerText = "Cible : " + proche.nom;
-        });
-    }
-}
+        }
     </script>
 </body>
 </html>
