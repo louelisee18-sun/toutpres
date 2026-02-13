@@ -3,101 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Abidjan Nav Pro - Icônes</title>
+    <title>Abidjan Proxi-Nav</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; background: #f8f9fa; overflow: hidden; }
-        #map { flex-grow: 1; width: 100%; z-index: 1; }
-
-        .info-nav { 
-            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-            width: 90%; background: white; padding: 15px; border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.25); z-index: 2000;
-            display: none; text-align: center; border-bottom: 4px solid #27ae60;
-        }
-        .stats { display: flex; justify-content: space-around; font-weight: bold; font-size: 1.3em; color: #2c3e50; }
-
-        .btn-center {
-            position: absolute; bottom: 230px; right: 20px;
-            background: white; border: none; width: 55px; height: 55px;
-            border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            z-index: 1000; font-size: 24px; display: flex; align-items: center; justify-content: center;
-        }
-
-        .ui-panel { padding: 20px; background: #ffffff; border-radius: 25px 25px 0 0; z-index: 1001; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
-        .search-box { position: relative; width: 100%; margin-bottom: 12px; }
-        input#searchName { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #fdfdfd; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        .suggestions { 
-            position: absolute; bottom: 100%; left: 0; width: 100%; 
-            background: white; border: 1px solid #ddd; border-radius: 10px; 
-            max-height: 200px; overflow-y: auto; z-index: 3000; display: none;
+        /* La carte est cachée par défaut */
+        #map { flex-grow: 1; width: 100%; display: none; z-index: 1; }
+
+        /* Écran de chargement animé */
+        #loader { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: white; z-index: 5000; flex-direction: column; align-items: center; justify-content: center; 
         }
-        .suggestion-item { padding: 12px; border-bottom: 1px solid #f0f0f0; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #27ae60; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        select { width: 100%; padding: 14px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; }
-        button.main-btn { background: #000; color: #ffcc00; border: none; padding: 16px; border-radius: 10px; font-weight: bold; width: 100%; text-transform: uppercase; }
+        /* Panneau de recherche (visible au début) */
+        .ui-panel { padding: 30px 20px; background: white; z-index: 1001; transition: 0.3s; }
+        .ui-panel.minimized { padding: 10px 20px; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
 
-        /* Masquage du texte Leaflet */
+        .search-box { position: relative; margin-bottom: 15px; }
+        input#searchName, select { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; background: #f9f9f9; }
+        
+        .suggestions { position: absolute; bottom: 100%; left: 0; width: 100%; background: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: none; z-index: 3000; }
+        .suggestion-item { padding: 12px; border-bottom: 1px solid #eee; }
+
+        button.main-btn { background: #000; color: #ffcc00; border: none; padding: 18px; border-radius: 12px; font-weight: bold; width: 100%; font-size: 16px; }
+
+        /* Infos trajet et bouton Google Maps */
+        .info-nav { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 90%; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 2000; display: none; text-align: center; }
+        .btn-gmaps { display: inline-block; margin-top: 10px; background: #4285F4; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-size: 14px; font-weight: bold; }
+        
         .leaflet-routing-container { display: none !important; }
     </style>
 </head>
 <body>
 
+    <div id="loader">
+        <div class="spinner"></div>
+        <p style="margin-top: 15px; font-weight: bold; color: #2c3e50;">Recherche du plus proche...</p>
+    </div>
+
     <div class="info-nav" id="navPanel">
-        <div id="destName" style="font-weight: 800; color: #27ae60;"></div>
-        <div class="stats">
+        <div id="destName" style="font-weight: bold; color: #27ae60;"></div>
+        <div style="display:flex; justify-content: space-around; margin: 10px 0; font-size: 1.2em; font-weight: bold;">
             <span id="kmRemaining">-- km</span>
             <span id="minRemaining">-- min</span>
         </div>
+        <a id="linkGmaps" class="btn-gmaps" target="_blank">Ouvrir dans Google Maps</a>
     </div>
 
     <div id="map"></div>
-    <button class="btn-center" onclick="centrerCarte()">🎯</button>
 
-    <div class="ui-panel">
+    <div class="ui-panel" id="mainPanel">
+        <h2 id="title" style="margin-top:0;">Bonjour, <br><span style="color:#27ae60;">Où allez-vous ?</span></h2>
+        
         <div class="search-box">
             <div class="suggestions" id="suggestionList"></div>
-            <input type="text" id="searchName" placeholder="Rechercher un nom..." oninput="filtrerNoms()" autocomplete="off">
+            <input type="text" id="searchName" placeholder="Entrez un nom (ex: Pharmacie...)" oninput="filtrerNoms()" autocomplete="off">
         </div>
 
         <select id="categorie">
-            <option value="">-- Catégories --</option>
+            <option value="">-- Ou choisissez une catégorie --</option>
             <option value="orange_money">Orange Money</option>
             <option value="pharmacie">Pharmacie</option>
             <option value="restaurant">Restaurant</option>
             <option value="banque">Banque</option>
-            <option value="hopital">Hôpital</option>
-            <option value="supermarche">Supermarché</option>
         </select>
         
-        <button class="main-btn" onclick="lancerRecherche()">Démarrer</button>
+        <button class="main-btn" onclick="demarrerAction()">LANCER L'ITINÉRAIRE</button>
     </div>
 
     <script>
-        const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.3484, -4.0305], 13);
+        const map = L.map('map', { zoomControl: false }).setView([5.3484, -4.0305], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         let userPos = null, watchID = null, routingControl = null;
         let tousLesLieux = [], lieuSelectionne = null;
-
-        // Configuration des icônes par catégorie
-        const icones = {
-            orange_money: 'https://cdn-icons-png.flaticon.com/512/6036/6036714.png',
-            pharmacie: 'https://cdn-icons-png.flaticon.com/512/883/883356.png',
-            restaurant: 'https://cdn-icons-png.flaticon.com/512/1996/1996055.png',
-            banque: 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png',
-            hopital: 'https://cdn-icons-png.flaticon.com/512/3063/3063176.png',
-            supermarche: 'https://cdn-icons-png.flaticon.com/512/3081/3081840.png',
-            defaut: 'https://cdn-icons-png.flaticon.com/512/684/684908.png'
-        };
-
-        let userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
-        let destMarker = L.marker([0,0]).addTo(map);
+        let userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
 
         async function chargerDonnees() {
             const reponse = await fetch('./lieux.json');
@@ -117,28 +105,30 @@
                     const div = document.createElement('div');
                     div.className = 'suggestion-item';
                     div.innerText = m.nom;
-                    div.onclick = () => {
-                        document.getElementById('searchName').value = m.nom;
-                        lieuSelectionne = m;
-                        list.style.display = 'none';
-                    };
+                    div.onclick = () => { document.getElementById('searchName').value = m.nom; lieuSelectionne = m; list.style.display = 'none'; };
                     list.appendChild(div);
                 });
             }
         }
 
-        function centrerCarte() { if (userPos) map.setView(userPos, 17); }
+        function demarrerAction() {
+            // Afficher l'écran de chargement
+            document.getElementById('loader').style.display = 'flex';
+            
+            // Simuler un petit délai de recherche pour le design
+            setTimeout(() => {
+                lancerNavigation();
+            }, 1500);
+        }
 
-        function lancerRecherche() {
+        function lancerNavigation() {
             const cat = document.getElementById('categorie').value;
             const nomInput = document.getElementById('searchName').value;
 
             if (navigator.geolocation) {
-                if (watchID) navigator.geolocation.clearWatch(watchID);
-                watchID = navigator.geolocation.watchPosition(pos => {
+                navigator.geolocation.getCurrentPosition(pos => {
                     userPos = [pos.coords.latitude, pos.coords.longitude];
-                    userMarker.setLatLng(userPos);
-
+                    
                     let cible = null;
                     if (lieuSelectionne && nomInput.toLowerCase() === lieuSelectionne.nom.toLowerCase()) {
                         cible = lieuSelectionne;
@@ -151,31 +141,42 @@
                         });
                     }
 
-                    if (cible) tracerRoute(userPos, cible);
-                }, null, { enableHighAccuracy: true });
+                    if (cible) {
+                        // Mise à jour interface
+                        document.getElementById('loader').style.display = 'none';
+                        document.getElementById('map').style.display = 'block';
+                        document.getElementById('title').style.display = 'none';
+                        document.getElementById('mainPanel').classList.add('minimized');
+                        document.getElementById('navPanel').style.display = 'block';
+                        
+                        // Configurer le lien Google Maps direct
+                        const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${cible.lat},${cible.lng}&travelmode=driving`;
+                        document.getElementById('linkGmaps').href = gmapsUrl;
+
+                        tracerRoute(userPos, cible);
+                        map.invalidateSize(); // Force la carte à se redessiner correctement
+                    } else {
+                        document.getElementById('loader').style.display = 'none';
+                        alert("Lieu non trouvé.");
+                    }
+                });
             }
         }
 
         function tracerRoute(depart, arrivee) {
-            // Mise à jour de l'icône selon la catégorie
-            const urlIcone = icones[arrivee.cat] || icones.defaut;
-            const customIcon = L.icon({ iconUrl: urlIcone, iconSize: [35, 35], iconAnchor: [17, 35] });
-            
-            destMarker.setLatLng([arrivee.lat, arrivee.lng]).setIcon(customIcon).bindPopup(arrivee.nom);
-            document.getElementById('destName').innerText = "Vers : " + arrivee.nom;
-            document.getElementById('navPanel').style.display = "block";
-
             if (routingControl) map.removeControl(routingControl);
             routingControl = L.Routing.control({
                 waypoints: [L.latLng(depart[0], depart[1]), L.latLng(arrivee.lat, arrivee.lng)],
                 createMarker: () => null,
                 show: false,
-                lineOptions: { styles: [{ color: '#000', weight: 6 }] }
+                lineOptions: { styles: [{ color: '#27ae60', weight: 6 }] }
             }).on('routesfound', e => {
                 const r = e.routes[0];
                 document.getElementById('kmRemaining').innerText = (r.summary.totalDistance / 1000).toFixed(1) + " km";
                 document.getElementById('minRemaining').innerText = Math.round(r.summary.totalTime / 60) + " min";
+                document.getElementById('destName').innerText = arrivee.nom;
             }).addTo(map);
+            map.setView(depart, 15);
         }
     </script>
 </body>
