@@ -1,8 +1,18 @@
 [
-    { "cat": "orange_money", "nom": "Orange Plateau Chardy", "lat": 5.3245, "lng": -4.0195 },
-    { "cat": "pharmacie", "nom": "Pharmacie de la Paix", "lat": 5.3270, "lng": -4.0200 },
-    { "cat": "restaurant", "nom": "Espace 331 Marcory", "lat": 5.3015, "lng": -3.9850 },
-    { "cat": "banque", "nom": "Ecobank Siège", "lat": 5.3285, "lng": -4.0210 },
-    { "cat": "hopital", "nom": "PISAM Cocody", "lat": 5.3350, "lng": -4.0050 },
-    { "cat": "supermarche", "nom": "Prima Center", "lat": 5.2950, "lng": -3.9820 }
+    { 
+        "cat": "pharmacie", 
+        "nom": "Pharmacie du Plateau", 
+        "lat": 5.3270, 
+        "lng": -4.0200, 
+        "premium": true, 
+        "phone": "2250707070707" 
+    },
+    { 
+        "cat": "restaurant", 
+        "nom": "Maquis Propre Cocody", 
+        "lat": 5.3411, 
+        "lng": -3.9932, 
+        "premium": false, 
+        "phone": "2250101010101" 
+    }
 ]
