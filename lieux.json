@@ -1,7 +1,8 @@
 [
-    { "cat": "orange_money", "nom": "Agence Plateau Chardy", "lat": 5.3245, "lng": -4.0195 },
-    { "cat": "pharmacie", "nom": "Pharmacie du Plateau", "lat": 5.3270, "lng": -4.0200 },
-    { "cat": "restaurant", "nom": "Chez Claire Marcory", "lat": 5.3010, "lng": -3.9850 },
-    { "cat": "eglise", "nom": "Cathédrale St Paul", "lat": 5.3285, "lng": -4.0205 },
-    { "cat": "ecole", "nom": "Externat St Paul", "lat": 5.3290, "lng": -4.0215 }
+    { "cat": "orange_money", "nom": "Orange Plateau Chardy", "lat": 5.3245, "lng": -4.0195 },
+    { "cat": "pharmacie", "nom": "Pharmacie de la Paix", "lat": 5.3270, "lng": -4.0200 },
+    { "cat": "restaurant", "nom": "Espace 331 Marcory", "lat": 5.3015, "lng": -3.9850 },
+    { "cat": "banque", "nom": "Ecobank Siège", "lat": 5.3285, "lng": -4.0210 },
+    { "cat": "hopital", "nom": "PISAM Cocody", "lat": 5.3350, "lng": -4.0050 },
+    { "cat": "supermarche", "nom": "Prima Center", "lat": 5.2950, "lng": -3.9820 }
 ]
