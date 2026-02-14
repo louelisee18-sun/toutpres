@@ -3,140 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Abidjan Proxi-Nav Premium</title>
+    <title>ProxiNav Abidjan - Haute Qualité</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <style>
-        :root { --primary: #27ae60; --premium: #f1c40f; --dark: #202124; }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #fff; font-family: 'Segoe UI', sans-serif; }
+        :root { --primary: #27ae60; --premium: #f1c40f; --dark: #1a1a1a; --glass: rgba(255, 255, 255, 0.9); }
         
-        #map { position: absolute; inset: 0; z-index: 1; }
+        body, html { height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #f0f0f0; }
 
-        /* Écran de recherche initial */
-        #searchUI {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 92%; max-width: 450px; background: white; padding: 25px;
-            border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 2000;
+        /* Conteneur principal flexible */
+        .app-container { display: flex; flex-direction: column; height: 100vh; width: 100%; position: relative; }
+
+        /* Carte occupant tout l'espace */
+        #map { flex: 1; width: 100%; z-index: 1; }
+
+        /* Écran de chargement animé */
+        #loader { 
+            position: fixed; inset: 0; background: white; z-index: 9999; 
+            display: none; flex-direction: column; align-items: center; justify-content: center; 
+        }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Bandeau de navigation (Style Image 6) */
+        #navHeader {
+            position: absolute; top: 0; left: 0; width: 100%; background: #0d652d; color: white;
+            padding: 20px; z-index: 2000; display: none; box-sizing: border-box; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
 
-        /* Fiche Partenaire Premium (Design Yango/Google) */
-        #bizUI {
-            display: none; position: absolute; bottom: 0; left: 0; width: 100%;
-            background: white; border-radius: 24px 24px 0 0; padding: 25px;
-            z-index: 2500; box-shadow: 0 -5px 25px rgba(0,0,0,0.1); animation: slideUp 0.3s ease;
+        /* Panneau de recherche (Bas) */
+        .bottom-panel { background: white; padding: 20px; border-radius: 25px 25px 0 0; z-index: 1001; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; }
+        
+        .input-group { margin-bottom: 12px; }
+        input, select { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; background: #f9f9f9; }
+        
+        .btn-main { background: var(--dark); color: var(--premium); border: none; padding: 16px; border-radius: 12px; font-weight: 800; width: 100%; font-size: 16px; cursor: pointer; }
+
+        /* Fiche Business (Style Image 2/4) */
+        #bizUI { display: none; text-align: center; }
+        .wa-btn { background: #25D366; color: white; text-decoration: none; display: block; padding: 15px; border-radius: 12px; font-weight: bold; margin: 10px 0; }
+
+        /* Icônes flottantes latérales (Style Image 6) */
+        .side-tools { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; z-index: 1500; }
+        .tool-btn { 
+            width: 50px; height: 50px; background: white; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-size: 20px; cursor: pointer;
         }
 
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
-        /* Banner Promo (Ton levier à 10 chiffres) */
-        .promo-banner {
-            background: #fff9e6; border: 1px dashed var(--premium);
-            padding: 10px; border-radius: 10px; color: #856404;
-            font-size: 14px; font-weight: 600; margin: 10px 0; display: none;
-        }
-
-        .btn-wa {
-            background: #25D366; color: white; display: flex; align-items: center; justify-content: center;
-            padding: 18px; border-radius: 16px; text-decoration: none; font-weight: 800; font-size: 16px;
-        }
-
-        /* Masquage des textes Leaflet pour la fluidité */
+        /* Masquage des textes Leaflet */
         .leaflet-routing-container { display: none !important; }
-        .leaflet-bar { border: none !important; box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important; }
-
-        .btn-nav { background: var(--dark); color: var(--premium); border: none; padding: 18px; border-radius: 15px; width: 100%; font-weight: 800; font-size: 16px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
-
-    <div id="searchUI">
-        <h2 style="margin: 0 0 20px 0; font-size: 24px;">Trouver un service<br><span style="color:var(--primary)">à proximité</span></h2>
-        <input type="text" id="searchName" placeholder="Rechercher par nom..." style="width:100%; padding:15px; border-radius:12px; border:1px solid #ddd; margin-bottom:10px; box-sizing:border-box; font-size:16px;">
-        <select id="categorie" style="width:100%; padding:15px; border-radius:12px; border:1px solid #ddd; font-size:16px;">
-            <option value="">Toutes les catégories</option>
-            <option value="pharmacie">Pharmacie</option>
-            <option value="orange_money">Orange Money</option>
-            <option value="restaurant">Restaurant</option>
-        </select>
-        <button class="btn-nav" onclick="lancerCalcul()">DÉMARRER LA RECHERCHE</button>
+    <div id="loader">
+        <div class="spinner"></div>
+        <p style="margin-top:15px; font-weight:bold;">Analyse de l'itinéraire...</p>
     </div>
 
-    <div id="bizUI">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 id="bizTitle" style="margin:0; font-size: 22px;">Pharmacie</h2>
-            <span id="bizBadge" style="display:none; background:var(--premium); padding:5px 10px; border-radius:8px; font-size:12px; font-weight:900;">PREMIUM</span>
+    <div class="app-container">
+        <div id="navHeader">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <span style="font-size:30px;">⬆️</span>
+                <div>
+                    <div style="font-size:18px; font-weight:bold;">Prendre la direction Nord</div>
+                    <div style="font-size:14px; opacity:0.8;">Vers Boulevard de la République</div>
+                </div>
+            </div>
         </div>
-        <div id="bizStats" style="color:var(--primary); font-weight:bold; margin: 5px 0; font-size: 16px;">-- km (-- min)</div>
-        
-        <div id="bizPromo" class="promo-banner">✨ PROMO : -20% aujourd'hui !</div>
 
-        <a href="#" id="waLink" class="btn-wa" onclick="compterClic()">
-            <span style="margin-right:10px;">💬</span> COMMANDER VIA WHATSAPP
-        </a>
-        <button onclick="location.reload()" style="background:none; border:none; color:#999; width:100%; padding:15px; font-weight:600;">ANNULER / NOUVELLE DEMANDE</button>
+        <div id="map"></div>
+
+        <div class="side-tools">
+            <div class="tool-btn" onclick="centrer()" title="Recentrer">🎯</div>
+            <div class="tool-btn" onclick="toggleNav()" title="Mode Navigation">🛰️</div>
+        </div>
+
+        <div class="bottom-panel">
+            <div id="searchUI">
+                <div class="input-group">
+                    <input type="text" id="searchName" placeholder="Rechercher un nom (ex: Pharmacie...)">
+                </div>
+                <div class="input-group">
+                    <select id="categorie">
+                        <option value="pharmacie">Pharmacie</option>
+                        <option value="orange_money">Orange Money</option>
+                    </select>
+                </div>
+                <button class="btn-main" onclick="demarrerRecherche()">LANCER L'ITINÉRAIRE</button>
+            </div>
+
+            <div id="bizUI">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2 id="bizTitle" style="margin:0;">Nom</h2>
+                    <span style="background:var(--premium); padding:4px 8px; border-radius:5px; font-size:12px; font-weight:bold;">PREMIUM</span>
+                </div>
+                <div id="bizStats" style="color:var(--primary); font-weight:bold; margin:8px 0;">-- km (-- min)</div>
+                
+                <button class="btn-main" style="background:#1a73e8; color:white; margin-bottom:10px;" onclick="activerGuidage()">DÉMARRER LA NAVIGATION</button>
+                <a href="#" id="waLink" class="wa-btn">💬 COMMANDER VIA WHATSAPP</a>
+                <button onclick="location.reload()" style="background:none; border:none; color:gray; cursor:pointer; font-weight:600;">ANNULER / NOUVELLE DEMANDE</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        // Utilisation du style "Voyager" (Haute qualité, proche de Google Maps)
+        // Carte haute qualité Voyager (Proche Google Maps)
         const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.3484, -4.0305], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-        let userPos = null, routingControl = null, currentPartner = null;
+        let userPos = null, routingControl = null;
         let userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#1a73e8', fillOpacity: 1, weight: 3 }).addTo(map);
 
-        async function lancerCalcul() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(async pos => {
-                    userPos = [pos.coords.latitude, pos.coords.longitude];
-                    userMarker.setLatLng(userPos);
-                    
-                    // Simule la récupération des données depuis lieux.json
-                    const resp = await fetch('./lieux.json');
-                    const lieux = await resp.json();
-                    
-                    // On prend le plus proche (ou le premium)
-                    currentPartner = lieux[0]; 
-                    
-                    afficherPartenaire(currentPartner);
-                });
-            }
+        function centrer() { if(userPos) map.setView(userPos, 18, {animate: true}); }
+
+        function demarrerRecherche() {
+            document.getElementById('loader').style.display = 'flex';
+            setTimeout(() => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        userPos = [pos.coords.latitude, pos.coords.longitude];
+                        userMarker.setLatLng(userPos);
+                        
+                        // Simulation cible
+                        const cible = { lat: 5.3270, lng: -4.0200, nom: "Pharmacie du Plateau" };
+                        
+                        document.getElementById('loader').style.display = 'none';
+                        document.getElementById('searchUI').style.display = 'none';
+                        document.getElementById('bizUI').style.display = 'block';
+                        document.getElementById('bizTitle').innerText = cible.nom;
+
+                        if (routingControl) map.removeControl(routingControl);
+                        routingControl = L.Routing.control({
+                            waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(cible.lat, cible.lng)],
+                            createMarker: () => null,
+                            show: false,
+                            lineOptions: { styles: [{ color: '#27ae60', weight: 8 }] }
+                        }).on('routesfound', e => {
+                            const r = e.routes[0];
+                            document.getElementById('bizStats').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
+                        }).addTo(map);
+                        
+                        map.fitBounds([userPos, [cible.lat, cible.lng]], { padding: [80, 80] });
+                        map.invalidateSize(); // Force la réactivité après changement d'interface
+                    });
+                }
+            }, 1500); // Temps de recherche visible
         }
 
-        function afficherPartenaire(p) {
-            document.getElementById('searchUI').style.display = 'none';
-            document.getElementById('bizUI').style.display = 'block';
-            document.getElementById('bizTitle').innerText = p.nom;
-            document.getElementById('waLink').href = `https://wa.me/${p.phone}`;
-
-            // Afficher le badge Premium et la Promo si dispo
-            if(p.premium) document.getElementById('bizBadge').style.display = 'block';
-            if(p.promo) {
-                document.getElementById('bizPromo').style.display = 'block';
-                document.getElementById('bizPromo').innerText = "✨ " + p.promo;
-            }
-
-            if (routingControl) map.removeControl(routingControl);
-            routingControl = L.Routing.control({
-                waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(p.lat, p.lng)],
-                createMarker: () => null,
-                show: false,
-                lineOptions: { styles: [{ color: '#27ae60', weight: 8 }] }
-            }).on('routesfound', e => {
-                const r = e.routes[0];
-                document.getElementById('bizStats').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
-            }).addTo(map);
-
-            map.fitBounds([userPos, [p.lat, p.lng]], { padding: [100, 100] });
-        }
-
-        function compterClic() {
-            console.log("Clic enregistré pour : " + currentPartner.nom);
-            // Ici nous enverrons l'info à la base de données plus tard
+        function activerGuidage() {
+            document.getElementById('bizUI').style.display = 'none';
+            document.getElementById('navHeader').style.display = 'block';
+            map.setView(userPos, 19, {animate: true});
+            map.invalidateSize();
         }
     </script>
 </body>
