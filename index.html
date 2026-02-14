@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Abidjan Proxi-Nav Premium</title>
+    <title>Abidjan Proxi-Nav Ultra</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,235 +12,155 @@
     <style>
         :root { 
             --primary: #27ae60; 
-            --premium: #f1c40f; 
             --dark: #1a1a1a; 
-            --white: #ffffff;
+            --glass: rgba(255, 255, 255, 0.85);
         }
 
-        /* Reset Total pour un affichage plein écran sans bordures */
-        html, body { 
-            height: 100%; width: 100%; margin: 0; padding: 0; 
-            overflow: hidden; background: #000;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        html, body { height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #000; font-family: 'Inter', sans-serif; }
+        #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
+
+        /* Barre d'outils flottante latérale */
+        .map-tools {
+            position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 12px; z-index: 2000;
         }
 
-        /* Conteneur Principal */
-        .app-wrapper {
-            position: relative;
-            height: 100%;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* CARTE : Correction de la largeur (Full Screen) */
-        #map { 
-            position: absolute;
-            top: 0; bottom: 0; left: 0; right: 0;
-            width: 100%; height: 100%;
-            z-index: 1;
+        .tool-btn {
+            width: 50px; height: 50px; background: var(--glass); backdrop-filter: blur(10px);
+            border-radius: 15px; border: 1px solid rgba(255,255,255,0.3);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); cursor: pointer;
         }
 
         /* Panneau de recherche au démarrage */
         .search-overlay {
-            position: absolute;
-            bottom: 30px; left: 50%;
-            transform: translateX(-50%);
-            width: 90%; max-width: 450px;
-            background: var(--white);
-            padding: 25px;
-            border-radius: 24px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            z-index: 2000;
-            box-sizing: border-box;
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 450px; background: var(--glass); backdrop-filter: blur(15px);
+            padding: 25px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 2001; box-sizing: border-box;
         }
 
-        /* Fiche Business Finale (Celle de ta photo) */
+        /* Fiche Business */
         .business-sheet {
-            display: none;
-            position: absolute;
-            bottom: 25px; left: 50%;
-            transform: translateX(-50%);
-            width: 92%; max-width: 450px;
-            background: var(--white);
-            padding: 20px;
-            border-radius: 24px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            z-index: 2001;
-            box-sizing: border-box;
-            animation: slideUp 0.4s ease-out;
-        }
-
-        @keyframes slideUp {
-            from { transform: translate(-50%, 100%); opacity: 0; }
-            to { transform: translate(-50%, 0); opacity: 1; }
-        }
-
-        /* Style des textes et boutons */
-        .biz-title { font-size: 20px; font-weight: 800; color: var(--dark); margin: 0; }
-        .biz-meta { color: var(--primary); font-weight: 700; margin-top: 5px; font-size: 15px; }
-        
-        .badge-premium {
-            background: var(--premium); color: #000;
-            font-size: 11px; font-weight: 900;
-            padding: 3px 10px; border-radius: 6px;
-            margin-left: 8px; vertical-align: middle;
+            display: none; position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
+            width: 92%; max-width: 450px; background: white; padding: 20px;
+            border-radius: 24px; box-shadow: 0 15px 50px rgba(0,0,0,0.3); z-index: 2002;
         }
 
         .btn-whatsapp {
             display: flex; align-items: center; justify-content: center;
-            background: #25D366; color: white;
-            text-decoration: none; padding: 16px;
-            border-radius: 16px; font-weight: 800;
-            margin-top: 15px; font-size: 16px;
-            transition: transform 0.2s;
-        }
-        .btn-whatsapp:active { transform: scale(0.96); }
-
-        /* Inputs Professionnels */
-        input, select {
-            width: 100%; padding: 16px; margin-bottom: 12px;
-            border: 1.5px solid #eee; border-radius: 14px;
-            font-size: 16px; background: #f9f9f9; box-sizing: border-box;
+            background: #25D366; color: white; text-decoration: none; padding: 16px;
+            border-radius: 16px; font-weight: 800; margin-top: 15px;
         }
 
-        .btn-launch {
-            width: 100%; padding: 18px; background: var(--dark);
-            color: var(--premium); border: none; border-radius: 14px;
-            font-weight: 800; font-size: 16px; cursor: pointer;
-        }
-
-        /* NETTOYAGE RADICAL DU TEXTE SUR LA CARTE */
-        .leaflet-routing-container, .leaflet-routing-error, .leaflet-control-container .leaflet-routing-alternatives-container {
-            display: none !important;
-            visibility: hidden !important;
-        }
+        /* On cache les textes Leaflet */
+        .leaflet-routing-container { display: none !important; }
         
-        /* Loader High-End */
-        #loader {
-            position: fixed; inset: 0; background: var(--white);
-            z-index: 9999; display: none; flex-direction: column;
-            align-items: center; justify-content: center;
-        }
-        .spinner { width: 45px; height: 45px; border: 5px solid #f0f0f0; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        input, select { width: 100%; padding: 15px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 12px; font-size: 16px; }
+        .btn-launch { width: 100%; padding: 18px; background: var(--dark); color: #ffcc00; border: none; border-radius: 14px; font-weight: 800; }
     </style>
 </head>
 <body>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <p style="margin-top: 20px; font-weight: 700; color: #555;">Calcul de l'itinéraire optimal...</p>
+    <div id="map"></div>
+
+    <div class="map-tools">
+        <div class="tool-btn" onclick="centrerCarte()" title="Recentrer">🎯</div>
+        <div class="tool-btn" onclick="changerTypeCarte()" title="Type de carte">🗺️</div>
+        <div class="tool-btn" onclick="reinitialiser()" title="Nouvelle recherche">🔄</div>
     </div>
 
-    <div class="app-wrapper">
-        <div id="map"></div>
+    <div class="search-overlay" id="searchUI">
+        <h2 style="margin: 0 0 15px 0;">Où allons-nous ?</h2>
+        <input type="text" id="searchName" placeholder="Rechercher par nom..." autocomplete="off">
+        <select id="categorie">
+            <option value="">Toutes les catégories</option>
+            <option value="pharmacie">Pharmacie</option>
+            <option value="orange_money">Orange Money</option>
+            <option value="restaurant">Restaurant</option>
+        </select>
+        <button class="btn-launch" onclick="demarrerNavigation()">LANCER L'ITINÉRAIRE</button>
+    </div>
 
-        <div class="search-overlay" id="searchUI">
-            <h2 style="margin: 0 0 20px 0; font-size: 24px;">Bonjour 👋<br><span style="color:var(--primary)">Où allons-nous ?</span></h2>
-            <input type="text" id="searchName" placeholder="Rechercher un nom (ex: Pharmacie...)" autocomplete="off">
-            <select id="categorie">
-                <option value="">Toutes les catégories</option>
-                <option value="pharmacie">Pharmacie</option>
-                <option value="orange_money">Orange Money</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="banque">Banque</option>
-            </select>
-            <button class="btn-launch" onclick="demarrerNavigation()">LANCER L'ITINÉRAIRE</button>
-        </div>
-
-        <div class="business-sheet" id="bizUI">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                    <span class="biz-title" id="bizName">Nom du Lieu</span>
-                    <span id="bizPremium"></span>
-                </div>
-            </div>
-            <div class="biz-meta" id="bizStats">-- km (-- min)</div>
-            
-            <a href="#" id="waLink" class="btn-whatsapp">
-                <span style="margin-right: 10px;">💬</span> COMMANDER VIA WHATSAPP
-            </a>
-            
-            <div style="text-align: center; margin-top: 15px;">
-                <button onclick="window.location.reload()" style="background: none; border: none; color: #999; font-size: 13px; font-weight: 600;">Annuler / Nouvelle recherche</button>
-            </div>
-        </div>
+    <div class="business-sheet" id="bizUI">
+        <div style="font-size: 22px; font-weight: 800;" id="bizName">Nom</div>
+        <div style="color: var(--primary); font-weight: 700; margin: 5px 0;" id="bizStats">-- km -- min</div>
+        <a href="#" id="waLink" class="btn-wa-style btn-whatsapp">💬 COMMANDER WHATSAPP</a>
     </div>
 
     <script>
-        // Initialisation Carte Pleine Largeur
-        const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.3484, -4.0305], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        // 1. Couches de cartes de haute qualité
+        const planVille = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png');
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
 
+        const map = L.map('map', { zoomControl: false, attributionControl: false, layers: [planVille] }).setView([5.3484, -4.0305], 13);
+
+        let currentLayer = "plan";
         let userPos = null, routingControl = null, tousLesLieux = [];
-        let userMarker = L.circleMarker([0,0], { radius: 9, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
+        let userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
 
         async function chargerDonnees() {
-            try {
-                const resp = await fetch('./lieux.json');
-                tousLesLieux = await resp.json();
-            } catch(e) { console.error("Base de données manquante."); }
+            const resp = await fetch('./lieux.json');
+            tousLesLieux = await resp.json();
         }
         chargerDonnees();
 
+        // 2. Options de la carte
+        function changerTypeCarte() {
+            if (currentLayer === "plan") {
+                map.removeLayer(planVille);
+                satellite.addTo(map);
+                currentLayer = "satellite";
+            } else {
+                map.removeLayer(satellite);
+                planVille.addTo(map);
+                currentLayer = "plan";
+            }
+        }
+
+        function centrerCarte() {
+            if (userPos) map.setView(userPos, 17, { animate: true });
+            else alert("Localisation GPS en cours...");
+        }
+
+        function reinitialiser() {
+            window.location.reload();
+        }
+
+        // 3. Navigation
         function demarrerNavigation() {
-            const cat = document.getElementById('categorie').value;
-            const search = document.getElementById('searchName').value.toLowerCase();
-
-            document.getElementById('loader').style.display = 'flex';
-
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(pos => {
                     userPos = [pos.coords.latitude, pos.coords.longitude];
+                    userMarker.setLatLng(userPos);
                     
+                    const cat = document.getElementById('categorie').value;
+                    const search = document.getElementById('searchName').value.toLowerCase();
+
                     let matches = tousLesLieux.filter(l => 
                         (cat === "" || l.cat === cat) && (search === "" || l.nom.toLowerCase().includes(search))
                     );
 
                     if (matches.length > 0) {
-                        // Tri intelligent (Premium d'abord + Distance)
-                        matches.sort((a,b) => {
-                            if (a.premium && !b.premium) return -1;
-                            if (!a.premium && b.premium) return 1;
-                            return Math.hypot(a.lat - userPos[0], a.lng - userPos[1]) - Math.hypot(b.lat - userPos[0], b.lng - userPos[1]);
-                        });
-                        
-                        afficherResultat(matches[0]);
-                    } else {
-                        document.getElementById('loader').style.display = 'none';
-                        alert("Aucun résultat trouvé.");
+                        const cible = matches[0];
+                        document.getElementById('searchUI').style.display = 'none';
+                        document.getElementById('bizUI').style.display = 'block';
+                        document.getElementById('bizName').innerText = cible.nom;
+                        document.getElementById('waLink').href = `https://wa.me/${cible.phone}`;
+
+                        if (routingControl) map.removeControl(routingControl);
+                        routingControl = L.Routing.control({
+                            waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(cible.lat, cible.lng)],
+                            createMarker: () => null, show: false,
+                            lineOptions: { styles: [{ color: '#27ae60', weight: 8 }] }
+                        }).on('routesfound', e => {
+                            const r = e.routes[0];
+                            document.getElementById('bizStats').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
+                        }).addTo(map);
+                        map.fitBounds([userPos, [cible.lat, cible.lng]], { padding: [80, 80] });
                     }
-                }, () => { 
-                    document.getElementById('loader').style.display = 'none';
-                    alert("Veuillez autoriser le GPS."); 
                 });
             }
-        }
-
-        function afficherResultat(lieu) {
-            document.getElementById('loader').style.display = 'none';
-            document.getElementById('searchUI').style.display = 'none';
-            document.getElementById('bizUI').style.display = 'block';
-
-            document.getElementById('bizName').innerText = lieu.nom;
-            document.getElementById('bizPremium').innerHTML = lieu.premium ? '<span class="badge-premium">PREMIUM</span>' : '';
-            document.getElementById('waLink').href = `https://wa.me/${lieu.phone || '22500000000'}`;
-
-            if (routingControl) map.removeControl(routingControl);
-            
-            routingControl = L.Routing.control({
-                waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(lieu.lat, lieu.lng)],
-                createMarker: () => null,
-                show: false,
-                lineOptions: { styles: [{ color: '#27ae60', weight: 8, opacity: 0.8 }] }
-            }).on('routesfound', e => {
-                const r = e.routes[0];
-                document.getElementById('bizStats').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
-            }).addTo(map);
-
-            // Ajustement automatique du zoom pour voir tout le trajet
-            map.fitBounds([userPos, [lieu.lat, lieu.lng]], { padding: [80, 80] });
         }
     </script>
 </body>
