@@ -13,26 +13,25 @@
         :root { --primary: #27ae60; --premium: #f1c40f; --dark: #202124; --glass: rgba(255, 255, 255, 0.9); }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #121212; font-family: 'Segoe UI', sans-serif; }
         
-        #map { position: absolute; inset: 0; z-index: 1; }
+        #map { position: absolute; inset: 0; z-index: 1; transition: all 0.5s ease; }
 
-        /* SÉLECTEUR TYPE DE CARTE (Haut Droite) */
-        .map-selector {
-            position: absolute; top: 20px; right: 20px; z-index: 3000;
-            background: var(--glass); border-radius: 12px; padding: 5px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; gap: 5px;
+        /* BANDEAU STATS NAVIGATION (Nouveauté : Reste visible après démarrer) */
+        #navStatsHeader {
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            width: 80%; background: var(--dark); color: white; padding: 12px;
+            border-radius: 50px; z-index: 3000; display: none; text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid var(--primary);
         }
-        .map-type-btn { padding: 8px 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
-        .active-type { background: var(--dark); color: var(--premium); }
 
         /* BOUTON QUITTER NAV */
         #exitNav {
-            position: absolute; top: 20px; left: 20px; width: 45px; height: 45px;
+            position: absolute; top: 15px; left: 15px; width: 40px; height: 40px;
             background: white; border-radius: 50%; display: none; align-items: center;
-            justify-content: center; font-weight: bold; font-size: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 3000; cursor: pointer;
+            justify-content: center; font-weight: bold; font-size: 18px;
+            z-index: 3001; cursor: pointer;
         }
 
-        /* ICONES FLOTTANTES (Côté Droit) */
+        /* ICONES FLOTTANTES */
         .float-btns {
             position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
             display: flex; flex-direction: column; gap: 15px; z-index: 2000;
@@ -41,9 +40,7 @@
             width: 55px; height: 55px; background: white; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.25); font-size: 24px; cursor: pointer;
-            transition: 0.2s;
         }
-        .btn-circle:active { transform: scale(0.9); }
 
         /* PANNEAUX UI */
         #searchUI {
@@ -70,19 +67,18 @@
 <body>
 
     <div id="loader"><div class="spinner"></div></div>
-    <div id="exitNav" onclick="quitterNavigation()">✕</div>
-
-    <div class="map-selector">
-        <button id="btnLight" class="map-type-btn" onclick="setMap('light')">Jour</button>
-        <button id="btnDark" class="map-type-btn active-type" onclick="setMap('dark')">Nuit</button>
-        <button id="btnSat" class="map-type-btn" onclick="setMap('sat')">Sat</button>
+    
+    <div id="navStatsHeader">
+        <span id="navKm">-- km</span> • <span id="navMin">-- min</span>
     </div>
+
+    <div id="exitNav" onclick="quitterNavigation()">✕</div>
 
     <div id="map"></div>
 
     <div class="float-btns">
-        <div class="btn-circle" onclick="recentrer()" title="Recentrer">🎯</div>
-        <div class="btn-circle" id="compass" style="transform: rotate(0deg);" onclick="resetNord()" title="Boussole">🧭</div>
+        <div class="btn-circle" onclick="recentrer()">🎯</div>
+        <div class="btn-circle" id="compassBtn" title="Boussole Orientation">🧭</div>
     </div>
 
     <div id="searchUI">
@@ -98,42 +94,34 @@
 
     <div id="bizUI">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 id="bizTitle" style="margin:0;">Pharmacie</h2>
+            <h2 id="bizTitle" style="margin:0;">Nom</h2>
             <span id="bizBadge" style="display:none; background:var(--premium); padding:5px 10px; border-radius:8px; font-size:12px; font-weight:900;">PREMIUM</span>
         </div>
-        <div id="bizStats" style="color:var(--primary); font-weight:bold; margin: 10px 0;">-- km (-- min)</div>
+        <div id="bizStatsDisplay" style="color:var(--primary); font-weight:bold; margin: 10px 0;">-- km (-- min)</div>
         <button class="btn-start" onclick="activerModeNavigation()">DÉMARRER</button>
         <a href="#" id="waLink" class="btn-wa">💬 COMMANDER WHATSAPP</a>
         <button onclick="quitterNavigation()" style="background:none; border:none; color:#999; width:100%; padding:15px; font-weight:600; cursor:pointer;">ANNULER</button>
     </div>
 
     <script>
-        // COUCHES DE CARTES
-        const layers = {
-            light: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'),
-            dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'),
-            sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
-        };
-
         const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.3484, -4.0305], 13);
-        layers.dark.addTo(map); // Mode nuit par défaut
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        let userPos = null, routingControl = null;
+        let userPos = null, routingControl = null, watchID = null, isNavigating = false;
         let userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#1a73e8', fillOpacity: 1, weight: 3 }).addTo(map);
 
-        function setMap(type) {
-            Object.values(layers).forEach(layer => map.removeLayer(layer));
-            layers[type].addTo(map);
-            document.querySelectorAll('.map-type-btn').forEach(btn => btn.classList.remove('active-type'));
-            document.getElementById('btn' + type.charAt(0).toUpperCase() + type.slice(1)).classList.add('active-type');
+        // 1. BOUSSOLE ACTIVE (Orientation réelle du téléphone)
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', function(event) {
+                let alpha = event.alpha; // Orientation en degrés
+                if (alpha !== null) {
+                    // On fait tourner l'icône boussole
+                    document.getElementById('compassBtn').style.transform = `rotate(${-alpha}deg)`;
+                }
+            }, false);
         }
 
         function recentrer() { if (userPos) map.setView(userPos, 18, { animate: true }); }
-        
-        function resetNord() { 
-            map.setBearing(0); // Si plugin de rotation utilisé, sinon recentre juste la vue
-            document.getElementById('compass').style.transform = "rotate(0deg)";
-        }
 
         function lancerCalcul() {
             document.getElementById('loader').style.display = 'flex';
@@ -159,22 +147,41 @@
                             lineOptions: { styles: [{ color: '#27ae60', weight: 8 }] }
                         }).on('routesfound', e => {
                             const r = e.routes[0];
-                            document.getElementById('bizStats').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
+                            const dist = (r.summary.totalDistance/1000).toFixed(1) + " km";
+                            const time = Math.round(r.summary.totalTime/60) + " min";
+                            
+                            // On met à jour les stats partout
+                            document.getElementById('bizStatsDisplay').innerText = `${dist} (${time})`;
+                            document.getElementById('navKm').innerText = dist;
+                            document.getElementById('navMin').innerText = time;
                         }).addTo(map);
                         map.fitBounds([userPos, [cible.lat, cible.lng]], { padding: [80, 80] });
-                    }, 1000);
+                    }, 800);
                 });
             }
         }
 
         function activerModeNavigation() {
+            isNavigating = true;
             document.getElementById('bizUI').style.display = 'none';
             document.getElementById('exitNav').style.display = 'flex';
+            document.getElementById('navStatsHeader').style.display = 'block'; // Affiche KM/MIN en haut
+            
             map.setView(userPos, 19, { animate: true });
+
+            // Suivi de position en temps réel
+            watchID = navigator.geolocation.watchPosition(pos => {
+                userPos = [pos.coords.latitude, pos.coords.longitude];
+                userMarker.setLatLng(userPos);
+                if (isNavigating) map.panTo(userPos);
+            }, null, { enableHighAccuracy: true });
         }
 
         function quitterNavigation() {
+            isNavigating = false;
+            if (watchID) navigator.geolocation.clearWatch(watchID);
             document.getElementById('exitNav').style.display = 'none';
+            document.getElementById('navStatsHeader').style.display = 'none';
             document.getElementById('bizUI').style.display = 'none';
             document.getElementById('searchUI').style.display = 'block';
             if (routingControl) map.removeControl(routingControl);
