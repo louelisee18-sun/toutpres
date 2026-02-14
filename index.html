@@ -2,56 +2,52 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Abidjan Nav - Final</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nav Proximité Abidjan</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <style>
-        :root { --primary: #27ae60; --dark: #1a1a1a; --premium: #f1c40f; }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        
-        #map { position: absolute; inset: 0; z-index: 1; }
+        #map { height: 100%; width: 100%; z-index: 1; }
 
-        /* DESIGN DEMANDÉ : Recherche au démarrage */
-        .search-overlay {
-            position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
-            width: 92%; max-width: 450px; background: white; padding: 20px;
-            border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 2000;
+        /* Écran de recherche initial */
+        .ui-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 400px; background: white; padding: 20px;
+            border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000;
         }
 
-        /* DESIGN DEMANDÉ : Fiche Business Blanche Arrondie */
-        .business-sheet {
-            display: none; position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
-            width: 92%; max-width: 450px; background: white; padding: 20px;
-            border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 2001;
+        /* Fiche Business (Blanche arrondie avec Annuler) */
+        .biz-sheet {
+            display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 400px; background: white; padding: 20px;
+            border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 1001;
         }
 
-        /* MODIFICATION : Icônes flottantes sur le côté (Recentrer) */
-        .side-controls {
-            position: absolute; right: 15px; bottom: 250px;
-            display: flex; flex-direction: column; gap: 10px; z-index: 1500;
-        }
-        .btn-tool {
+        /* Bouton Recentrer Flottant */
+        .btn-recentrer {
+            position: absolute; right: 20px; bottom: 220px;
             width: 50px; height: 50px; background: white; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-size: 20px; cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 1000; cursor: pointer; font-size: 20px;
         }
 
-        /* MODIFICATION : Loader / Temps de recherche */
+        /* Temps de recherche (Loader) */
         #loader {
-            position: fixed; inset: 0; background: white; z-index: 9999;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
+            position: fixed; inset: 0; background: rgba(255,255,255,0.9);
+            z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center;
         }
-        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #27ae60; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Boutons et Inputs */
-        input, select { width: 100%; padding: 15px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
-        .btn-black { background: var(--dark); color: var(--premium); border: none; padding: 16px; border-radius: 12px; font-weight: 800; width: 100%; font-size: 16px; cursor: pointer; }
-        .btn-wa { background: #25D366; color: white; text-decoration: none; display: flex; align-items: center; justify-content: center; padding: 16px; border-radius: 16px; font-weight: 800; margin-top: 10px; }
+        /* Boutons */
+        input, select { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+        .btn-go { background: black; color: #ffcc00; border: none; padding: 15px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; }
+        .btn-wa { background: #25D366; color: white; text-decoration: none; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-top: 10px; }
         
         .leaflet-routing-container { display: none !important; }
     </style>
@@ -60,89 +56,82 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <p style="margin-top: 15px; font-weight: bold; color: #555;">Recherche du plus proche...</p>
+        <p style="margin-top:10px; font-weight:bold;">Recherche en cours...</p>
     </div>
 
     <div id="map"></div>
 
-    <div class="side-controls">
-        <div class="btn-tool" onclick="recentrer()">🎯</div>
-    </div>
+    <div class="btn-recentrer" onclick="recentrer()">🎯</div>
 
-    <div class="search-overlay" id="searchUI">
-        <h2 style="margin: 0 0 15px 0; font-size: 22px;">Où allons-nous ?</h2>
-        <input type="text" id="searchName" placeholder="Rechercher par nom...">
+    <div class="ui-panel" id="searchUI">
+        <input type="text" id="searchName" placeholder="Rechercher un nom...">
         <select id="categorie">
             <option value="pharmacie">Pharmacie</option>
             <option value="orange_money">Orange Money</option>
         </select>
-        <button class="btn-black" onclick="lancerRecherche()">LANCER L'ITINÉRAIRE</button>
+        <button class="btn-go" onclick="lancerCalcul()">LANCER L'ITINÉRAIRE</button>
     </div>
 
-    <div class="business-sheet" id="bizUI">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3 id="bizName" style="margin:0; font-size: 20px;">Nom du Lieu</h3>
-            <span style="background:var(--premium); padding:4px 8px; border-radius:6px; font-size:11px; font-weight:bold;">PREMIUM</span>
+    <div class="biz-sheet" id="bizUI">
+        <div style="display:flex; justify-content:space-between;">
+            <h3 id="bizTitle" style="margin:0;">Nom du lieu</h3>
+            <span style="background:#ffcc00; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">PREMIUM</span>
         </div>
-        <div id="bizStats" style="color:var(--primary); font-weight:bold; margin: 8px 0;">-- km (-- min)</div>
+        <div id="bizDist" style="color:#27ae60; font-weight:bold; margin:5px 0;">-- km (-- min)</div>
         
-        <button class="btn-black" style="background:#1a73e8; color:white; margin-bottom: 10px;" onclick="demarrerNavigation()">DÉMARRER</button>
+        <button class="btn-go" style="background:#007bff; color:white;" onclick="demarrerNav()">DÉMARRER</button>
+        <a href="#" id="waLink" class="btn-wa">COMMANDER VIA WHATSAPP</a>
         
-        <a href="#" id="waLink" class="btn-wa">💬 COMMANDER VIA WHATSAPP</a>
-        
-        <div style="text-align: center; margin-top: 15px;">
-            <button onclick="window.location.reload()" style="background: none; border: none; color: #999; font-weight: 600; cursor: pointer;">ANNULER / NOUVELLE DEMANDE</button>
-        </div>
+        <button onclick="window.location.reload()" style="background:none; border:none; color:gray; width:100%; margin-top:10px; cursor:pointer; font-weight:bold;">ANNULER / NOUVELLE DEMANDE</button>
     </div>
 
     <script>
-        const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.3484, -4.0305], 13);
+        // Retour au fond de carte OSM Original
+        const map = L.map('map', { zoomControl: false }).setView([5.3484, -4.0305], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         let userPos = null, routingControl = null;
-        let userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#1a73e8', fillOpacity: 1, weight: 3 }).addTo(map);
+        let userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#007bff', fillOpacity: 1, weight: 3 }).addTo(map);
 
         function recentrer() {
             if (userPos) map.setView(userPos, 18, { animate: true });
         }
 
-        function lancerRecherche() {
-            // Afficher le temps de recherche (Animation Patientez)
+        function lancerCalcul() {
             document.getElementById('loader').style.display = 'flex';
-
+            
             setTimeout(() => {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(pos => {
                         userPos = [pos.coords.latitude, pos.coords.longitude];
                         userMarker.setLatLng(userPos);
                         
-                        // Simulation de la cible
+                        // Simulation cible
                         const cible = { lat: 5.3270, lng: -4.0200, nom: "Pharmacie du Plateau" };
                         
                         document.getElementById('loader').style.display = 'none';
                         document.getElementById('searchUI').style.display = 'none';
                         document.getElementById('bizUI').style.display = 'block';
-                        document.getElementById('bizName').innerText = cible.nom;
+                        document.getElementById('bizTitle').innerText = cible.nom;
 
                         if (routingControl) map.removeControl(routingControl);
                         routingControl = L.Routing.control({
                             waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(cible.lat, cible.lng)],
                             createMarker: () => null,
                             show: false,
-                            lineOptions: { styles: [{ color: '#27ae60', weight: 8 }] }
+                            lineOptions: { styles: [{ color: '#27ae60', weight: 6 }] }
                         }).on('routesfound', e => {
                             const r = e.routes[0];
-                            document.getElementById('bizStats').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
+                            document.getElementById('bizDist').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
                         }).addTo(map);
                         
-                        map.fitBounds([userPos, [cible.lat, cible.lng]], { padding: [70, 70] });
+                        map.fitBounds([userPos, [cible.lat, cible.lng]], { padding: [50, 50] });
                     });
                 }
-            }, 1500); // Durée du "Patientez"
+            }, 1200);
         }
 
-        function demarrerNavigation() {
-            // Action du bouton Démarrer : Zoom intense sur la position
+        function demarrerNav() {
             if (userPos) {
                 document.getElementById('bizUI').style.display = 'none';
                 map.setView(userPos, 19, { animate: true });
