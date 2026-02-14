@@ -10,123 +10,133 @@
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <style>
-        :root { --primary: #27ae60; --premium: #f1c40f; --dark: #202124; }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #fff; font-family: 'Segoe UI', sans-serif; }
+        :root { --primary: #27ae60; --premium: #f1c40f; --dark: #202124; --glass: rgba(255, 255, 255, 0.9); }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #121212; font-family: 'Segoe UI', sans-serif; }
         
-        #map { position: absolute; inset: 0; z-index: 1; transition: all 0.5s ease; }
+        #map { position: absolute; inset: 0; z-index: 1; }
 
-        /* Loader animé (Temps de recherche) */
-        #loader {
-            position: fixed; inset: 0; background: white; z-index: 9999;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
+        /* SÉLECTEUR TYPE DE CARTE (Haut Droite) */
+        .map-selector {
+            position: absolute; top: 20px; right: 20px; z-index: 3000;
+            background: var(--glass); border-radius: 12px; padding: 5px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; gap: 5px;
         }
-        .spinner { width: 45px; height: 45px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .map-type-btn { padding: 8px 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .active-type { background: var(--dark); color: var(--premium); }
 
-        /* Écran de recherche initial */
+        /* BOUTON QUITTER NAV */
+        #exitNav {
+            position: absolute; top: 20px; left: 20px; width: 45px; height: 45px;
+            background: white; border-radius: 50%; display: none; align-items: center;
+            justify-content: center; font-weight: bold; font-size: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 3000; cursor: pointer;
+        }
+
+        /* ICONES FLOTTANTES (Côté Droit) */
+        .float-btns {
+            position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 15px; z-index: 2000;
+        }
+        .btn-circle {
+            width: 55px; height: 55px; background: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25); font-size: 24px; cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-circle:active { transform: scale(0.9); }
+
+        /* PANNEAUX UI */
         #searchUI {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             width: 92%; max-width: 450px; background: white; padding: 25px;
-            border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 2000;
+            border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 2000;
         }
-
-        /* Fiche Partenaire Premium */
         #bizUI {
             display: none; position: absolute; bottom: 0; left: 0; width: 100%;
             background: white; border-radius: 24px 24px 0 0; padding: 25px;
-            z-index: 2500; box-shadow: 0 -5px 25px rgba(0,0,0,0.1); box-sizing: border-box;
+            z-index: 2500; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); box-sizing: border-box;
         }
 
-        /* Boutons Flottants (Style Google Maps) */
-        .float-btns {
-            position: absolute; right: 15px; bottom: 150px;
-            display: flex; flex-direction: column; gap: 12px; z-index: 2000;
-        }
-        .btn-circle {
-            width: 50px; height: 50px; background: white; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 22px; cursor: pointer;
-        }
-
-        .promo-banner {
-            background: #fff9e6; border: 1px dashed var(--premium);
-            padding: 10px; border-radius: 10px; color: #856404;
-            font-size: 14px; font-weight: 600; margin: 10px 0; display: none;
-        }
-
-        .btn-wa {
-            background: #25D366; color: white; display: flex; align-items: center; justify-content: center;
-            padding: 18px; border-radius: 16px; text-decoration: none; font-weight: 800; font-size: 16px; margin-top: 10px;
-        }
-
+        .btn-wa { background: #25D366; color: white; display: flex; align-items: center; justify-content: center; padding: 18px; border-radius: 16px; text-decoration: none; font-weight: 800; margin-top: 10px; }
+        .btn-nav { background: var(--dark); color: var(--premium); border: none; padding: 18px; border-radius: 15px; width: 100%; font-weight: 800; cursor: pointer; margin-top: 10px;}
+        .btn-start { background: #1a73e8; color: white; border: none; padding: 18px; border-radius: 15px; width: 100%; font-weight: 800; cursor: pointer; }
+        
         .leaflet-routing-container { display: none !important; }
-        .btn-nav { background: var(--dark); color: var(--premium); border: none; padding: 18px; border-radius: 15px; width: 100%; font-weight: 800; font-size: 16px; margin-top: 10px; cursor: pointer; }
-        .btn-start { background: #1a73e8; color: white; border: none; padding: 18px; border-radius: 15px; width: 100%; font-weight: 800; font-size: 16px; cursor: pointer; }
+        #loader { position: fixed; inset: 0; background: white; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .spinner { width: 45px; height: 45px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <p style="margin-top:15px; font-weight:bold; color:#444;">Recherche de l'itinéraire...</p>
+    <div id="loader"><div class="spinner"></div></div>
+    <div id="exitNav" onclick="quitterNavigation()">✕</div>
+
+    <div class="map-selector">
+        <button id="btnLight" class="map-type-btn" onclick="setMap('light')">Jour</button>
+        <button id="btnDark" class="map-type-btn active-type" onclick="setMap('dark')">Nuit</button>
+        <button id="btnSat" class="map-type-btn" onclick="setMap('sat')">Sat</button>
     </div>
 
     <div id="map"></div>
 
     <div class="float-btns">
-        <div class="btn-circle" onclick="recentrer()">🎯</div>
+        <div class="btn-circle" onclick="recentrer()" title="Recentrer">🎯</div>
+        <div class="btn-circle" id="compass" style="transform: rotate(0deg);" onclick="resetNord()" title="Boussole">🧭</div>
     </div>
 
     <div id="searchUI">
-        <h2 style="margin: 0 0 20px 0; font-size: 24px;">Trouver un service<br><span style="color:var(--primary)">à proximité</span></h2>
-        <input type="text" id="searchName" placeholder="Rechercher par nom..." style="width:100%; padding:15px; border-radius:12px; border:1px solid #ddd; margin-bottom:10px; box-sizing:border-box; font-size:16px;">
-        <select id="categorie" style="width:100%; padding:15px; border-radius:12px; border:1px solid #ddd; font-size:16px;">
+        <h2 style="margin: 0 0 15px 0;">Où allons-nous ?</h2>
+        <input type="text" id="searchName" placeholder="Rechercher..." style="width:100%; padding:15px; border-radius:12px; border:1px solid #ddd; margin-bottom:10px; box-sizing:border-box;">
+        <select id="categorie" style="width:100%; padding:15px; border-radius:12px; border:1px solid #ddd;">
             <option value="">Toutes les catégories</option>
             <option value="pharmacie">Pharmacie</option>
             <option value="orange_money">Orange Money</option>
         </select>
-        <button class="btn-nav" onclick="lancerCalcul()">DÉMARRER LA RECHERCHE</button>
+        <button class="btn-nav" onclick="lancerCalcul()">LANCER L'ITINÉRAIRE</button>
     </div>
 
     <div id="bizUI">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 id="bizTitle" style="margin:0; font-size: 22px;">Pharmacie</h2>
+            <h2 id="bizTitle" style="margin:0;">Pharmacie</h2>
             <span id="bizBadge" style="display:none; background:var(--premium); padding:5px 10px; border-radius:8px; font-size:12px; font-weight:900;">PREMIUM</span>
         </div>
-        <div id="bizStats" style="color:var(--primary); font-weight:bold; margin: 5px 0; font-size: 16px;">-- km (-- min)</div>
-        
-        <div id="bizPromo" class="promo-banner"></div>
-
-        <button class="btn-start" onclick="demarrerNav()">DÉMARRER</button>
-        
-        <a href="#" id="waLink" class="btn-wa" onclick="compterClic()">
-            <span style="margin-right:10px;">💬</span> COMMANDER VIA WHATSAPP
-        </a>
-        <button onclick="location.reload()" style="background:none; border:none; color:#999; width:100%; padding:15px; font-weight:600; cursor:pointer;">ANNULER / NOUVELLE DEMANDE</button>
+        <div id="bizStats" style="color:var(--primary); font-weight:bold; margin: 10px 0;">-- km (-- min)</div>
+        <button class="btn-start" onclick="activerModeNavigation()">DÉMARRER</button>
+        <a href="#" id="waLink" class="btn-wa">💬 COMMANDER WHATSAPP</a>
+        <button onclick="quitterNavigation()" style="background:none; border:none; color:#999; width:100%; padding:15px; font-weight:600; cursor:pointer;">ANNULER</button>
     </div>
 
     <script>
-        const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.3484, -4.0305], 13);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+        // COUCHES DE CARTES
+        const layers = {
+            light: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'),
+            dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'),
+            sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
+        };
 
-        let userPos = null, routingControl = null, currentPartner = null;
+        const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([5.3484, -4.0305], 13);
+        layers.dark.addTo(map); // Mode nuit par défaut
+
+        let userPos = null, routingControl = null;
         let userMarker = L.circleMarker([0,0], { radius: 10, color: '#fff', fillColor: '#1a73e8', fillOpacity: 1, weight: 3 }).addTo(map);
 
-        function recentrer() {
-            if (userPos) map.setView(userPos, 18, { animate: true });
+        function setMap(type) {
+            Object.values(layers).forEach(layer => map.removeLayer(layer));
+            layers[type].addTo(map);
+            document.querySelectorAll('.map-type-btn').forEach(btn => btn.classList.remove('active-type'));
+            document.getElementById('btn' + type.charAt(0).toUpperCase() + type.slice(1)).classList.add('active-type');
         }
 
-        function demarrerNav() {
-            if (userPos) {
-                document.getElementById('bizUI').style.display = 'none';
-                map.setView(userPos, 19, { animate: true });
-                // Note: Ici on pourrait ajouter une rotation de carte si nécessaire
-            }
+        function recentrer() { if (userPos) map.setView(userPos, 18, { animate: true }); }
+        
+        function resetNord() { 
+            map.setBearing(0); // Si plugin de rotation utilisé, sinon recentre juste la vue
+            document.getElementById('compass').style.transform = "rotate(0deg)";
         }
 
-        async function lancerCalcul() {
+        function lancerCalcul() {
             document.getElementById('loader').style.display = 'flex';
-            
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(async pos => {
                     userPos = [pos.coords.latitude, pos.coords.longitude];
@@ -134,46 +144,42 @@
                     
                     const resp = await fetch('./lieux.json');
                     const lieux = await resp.json();
-                    
-                    // Simulation recherche (on prend le 1er du JSON pour l'exemple)
-                    currentPartner = lieux[0]; 
-                    
-                    // Temps de chargement simulé pour le "Patientez"
+                    let cible = lieux[0]; 
+
                     setTimeout(() => {
                         document.getElementById('loader').style.display = 'none';
-                        afficherPartenaire(currentPartner);
-                    }, 1200);
+                        document.getElementById('searchUI').style.display = 'none';
+                        document.getElementById('bizUI').style.display = 'block';
+                        document.getElementById('bizTitle').innerText = cible.nom;
+                        
+                        if (routingControl) map.removeControl(routingControl);
+                        routingControl = L.Routing.control({
+                            waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(cible.lat, cible.lng)],
+                            createMarker: () => null, show: false,
+                            lineOptions: { styles: [{ color: '#27ae60', weight: 8 }] }
+                        }).on('routesfound', e => {
+                            const r = e.routes[0];
+                            document.getElementById('bizStats').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
+                        }).addTo(map);
+                        map.fitBounds([userPos, [cible.lat, cible.lng]], { padding: [80, 80] });
+                    }, 1000);
                 });
             }
         }
 
-        function afficherPartenaire(p) {
-            document.getElementById('searchUI').style.display = 'none';
-            document.getElementById('bizUI').style.display = 'block';
-            document.getElementById('bizTitle').innerText = p.nom;
-            document.getElementById('waLink').href = `https://wa.me/${p.phone}`;
-
-            if(p.premium) document.getElementById('bizBadge').style.display = 'block';
-            if(p.promo) {
-                document.getElementById('bizPromo').style.display = 'block';
-                document.getElementById('bizPromo').innerText = "✨ " + p.promo;
-            }
-
-            if (routingControl) map.removeControl(routingControl);
-            routingControl = L.Routing.control({
-                waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(p.lat, p.lng)],
-                createMarker: () => null,
-                show: false,
-                lineOptions: { styles: [{ color: '#27ae60', weight: 8 }] }
-            }).on('routesfound', e => {
-                const r = e.routes[0];
-                document.getElementById('bizStats').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
-            }).addTo(map);
-
-            map.fitBounds([userPos, [p.lat, p.lng]], { padding: [100, 100] });
+        function activerModeNavigation() {
+            document.getElementById('bizUI').style.display = 'none';
+            document.getElementById('exitNav').style.display = 'flex';
+            map.setView(userPos, 19, { animate: true });
         }
 
-        function compterClic() { console.log("Clic : " + currentPartner.nom); }
+        function quitterNavigation() {
+            document.getElementById('exitNav').style.display = 'none';
+            document.getElementById('bizUI').style.display = 'none';
+            document.getElementById('searchUI').style.display = 'block';
+            if (routingControl) map.removeControl(routingControl);
+            map.setView([5.3484, -4.0305], 13, { animate: true });
+        }
     </script>
 </body>
 </html>
