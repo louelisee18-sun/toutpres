@@ -3,122 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Abidjan Proxi-Nav Premium</title>
+    <title>Abidjan Nav - Expert</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <style>
-        :root { --primary: #27ae60; --blue: #1a73e8; --premium: #f1c40f; --dark: #202124; }
+        :root { --blue: #1a73e8; --green: #25D366; --dark: #202124; }
         
-        /* CONTENEUR PRINCIPAL (Fixe la largeur sur ordi) */
         body { 
-            margin: 0; padding: 0; background: #333; 
+            margin: 0; padding: 0; background: #2c2c2c; 
             display: flex; justify-content: center; align-items: center; height: 100vh;
         }
         
-        .app-container {
+        /* Conteneur fixe pour ordinateur */
+        .app-frame {
             width: 100%; max-width: 450px; height: 100%; max-height: 900px;
             position: relative; background: white; overflow: hidden;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            box-shadow: 0 0 40px rgba(0,0,0,0.6);
         }
 
         #map { position: absolute; inset: 0; z-index: 1; }
 
-        /* HEADER NAVIGATION SLIM */
-        #navHeader {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            width: 70%; background: var(--dark); color: white; padding: 10px;
-            border-radius: 30px; z-index: 3000; display: none; text-align: center;
-            font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        }
-
-        /* BOUTON QUITTER (X) */
-        #exitNav {
-            position: absolute; top: 15px; left: 15px; width: 40px; height: 40px;
-            background: white; border-radius: 50%; display: none; align-items: center;
-            justify-content: center; font-weight: bold; z-index: 3001; cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-
-        /* SÉLECTEUR DE TRANSPORT (Design Google) */
-        .transport-modes {
-            display: flex; justify-content: center; gap: 20px; margin: 15px 0;
-        }
-        .mode-btn {
-            background: #f1f3f4; border: none; padding: 10px 20px; border-radius: 20px;
-            cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px;
-        }
-        .mode-btn.active { background: var(--blue); color: white; }
-
-        /* ICONES FLOTTANTES */
-        .float-btns {
-            position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
-            display: flex; flex-direction: column; gap: 15px; z-index: 2000;
-        }
-        .btn-circle {
-            width: 50px; height: 50px; background: white; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 20px; cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        /* PANNEAUX UI */
-        #searchUI {
+        /* Interface de recherche (Menu défilant toujours présent) */
+        .main-panel {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
             width: 90%; background: white; padding: 20px; border-radius: 20px;
             z-index: 2000; box-shadow: 0 10px 30px rgba(0,0,0,0.2); box-sizing: border-box;
         }
 
-        #bizUI {
+        .transport-options { display: flex; justify-content: center; gap: 15px; margin: 10px 0; }
+        .mode-btn { 
+            flex: 1; padding: 10px; border-radius: 12px; border: 1px solid #ddd; 
+            background: #f8f9fa; cursor: pointer; font-weight: 600;
+        }
+        .mode-btn.selected { background: var(--blue); color: white; border-color: var(--blue); }
+
+        /* Fiche de résultat (Apparaît au-dessus de la recherche) */
+        .result-sheet {
             display: none; position: absolute; bottom: 0; left: 0; width: 100%;
-            background: white; border-radius: 24px 24px 0 0; padding: 25px;
+            background: white; border-radius: 24px 24px 0 0; padding: 20px;
             z-index: 2100; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); box-sizing: border-box;
+            animation: slideUp 0.3s ease-out;
         }
 
-        .btn-start { background: var(--blue); color: white; border: none; padding: 16px; border-radius: 12px; width: 100%; font-weight: bold; cursor: pointer; font-size: 16px; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .btn-action { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        .btn-blue { background: var(--blue); color: white; }
+        .btn-green { background: var(--green); color: white; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+
+        input, select { width: 100%; padding: 12px; margin-bottom: 8px; border-radius: 10px; border: 1px solid #eee; background: #f9f9f9; box-sizing: border-box; }
         
-        #loader { position: absolute; inset: 0; background: white; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .float-tools { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; z-index: 1500; }
+        .tool-btn { width: 45px; height: 45px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; font-size: 18px; }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
-        <div id="loader"><div class="spinner"></div></div>
-        
-        <div id="exitNav" onclick="quitterNavigation()">✕</div>
-        
-        <div id="navHeader">
-            <span id="navKm">-- km</span> • <span id="navMin">-- min</span>
-        </div>
-
+    <div class="app-frame">
         <div id="map"></div>
 
-        <div class="float-btns">
-            <div class="btn-circle" onclick="recentrer()">🎯</div>
-            <div class="btn-circle" id="compassIcon" onclick="resetRotation()">🧭</div>
+        <div class="float-tools">
+            <div class="tool-btn" onclick="recentrer()">🎯</div>
+            <div class="tool-btn" id="compass" onclick="resetNord()">🧭</div>
         </div>
 
-        <div id="searchUI">
-            <h3 style="margin:0 0 15px 0; font-size: 18px;">Où allez-vous ?</h3>
-            <input type="text" placeholder="Rechercher un lieu..." style="width:100%; padding:14px; border-radius:10px; border:1px solid #eee; background:#f8f9fa; box-sizing:border-box;">
+        <div class="main-panel" id="searchMenu">
+            <h3 style="margin:0 0 10px 0;">Où allons-nous ?</h3>
+            <input type="text" id="searchInput" placeholder="Rechercher (ex: Pharmacie...)">
+            <select id="categorySelect">
+                <option value="pharmacie">Pharmacie</option>
+                <option value="orange_money">Orange Money</option>
+                <option value="restaurant">Restaurant</option>
+            </select>
             
-            <div class="transport-modes">
-                <button id="modeCar" class="mode-btn active" onclick="setMode('car')">🚗 Voiture</button>
-                <button id="modeWalk" class="mode-btn" onclick="setMode('walk')">🚶 À pied</button>
+            <div class="transport-options">
+                <button id="carMode" class="mode-btn selected" onclick="updateMode('car')">🚗 Voiture</button>
+                <button id="walkMode" class="mode-btn" onclick="updateMode('walk')">🚶 À pied</button>
             </div>
-
-            <button class="btn-start" onclick="lancerCalcul()">VOIR L'ITINÉRAIRE</button>
+            
+            <button class="btn-action btn-blue" onclick="calculerTrajet()">LANCER L'ITINÉRAIRE</button>
         </div>
 
-        <div id="bizUI">
-            <h2 id="bizTitle" style="margin:0 0 5px 0;">Destination</h2>
-            <div id="bizStats" style="color:var(--primary); font-weight:bold; margin-bottom:15px;">-- km (-- min)</div>
-            <button class="btn-start" onclick="demarrerNav()">DÉMARRER</button>
-            <button onclick="quitterNavigation()" style="background:none; border:none; color:#70757a; width:100%; padding:12px; cursor:pointer; font-weight:600;">ANNULER</button>
+        <div class="result-sheet" id="resultSheet">
+            <h2 id="resTitle" style="margin:0;">Pharmacie du Plateau</h2>
+            <div id="resStats" style="color:var(--blue); font-weight:bold; margin: 5px 0;">6.2 km (9 min)</div>
+            
+            <button class="btn-action btn-blue" onclick="lancerNav()">DÉMARRER</button>
+            <a href="#" id="waLink" class="btn-action btn-green">💬 COMMANDER WHATSAPP</a>
+            
+            <button onclick="fermerResultat()" style="background:none; border:none; color:#70757a; width:100%; padding:10px; cursor:pointer; font-weight:600;">ANNULER / NOUVELLE DEMANDE</button>
         </div>
     </div>
 
@@ -129,35 +105,22 @@
         let userPos = null, routingControl = null, currentMode = 'car';
         let userMarker = L.circleMarker([0,0], { radius: 8, color: '#fff', fillColor: '#1a73e8', fillOpacity: 1, weight: 3 }).addTo(map);
 
-        // MODE DE TRANSPORT
-        function setMode(mode) {
+        function updateMode(mode) {
             currentMode = mode;
-            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(mode === 'car' ? 'modeCar' : 'modeWalk').classList.add('active');
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById(mode === 'car' ? 'carMode' : 'walkMode').classList.add('selected');
         }
 
-        // BOUSSOLE ACTIVE (Orientation mobile)
-        if (window.DeviceOrientationEvent) {
-            window.addEventListener('deviceorientation', e => {
-                if (e.alpha !== null) {
-                    document.getElementById('compassIcon').style.transform = `rotate(${-e.alpha}deg)`;
-                }
-            });
-        }
-
-        function resetRotation() { map.setBearing(0); } // Si plugin de rotation actif
         function recentrer() { if (userPos) map.setView(userPos, 17, { animate: true }); }
+        function resetNord() { map.setBearing(0); }
 
-        function lancerCalcul() {
-            document.getElementById('loader').style.display = 'flex';
-            navigator.geolocation.getCurrentPosition(async pos => {
+        function calculerTrajet() {
+            navigator.geolocation.getCurrentPosition(pos => {
                 userPos = [pos.coords.latitude, pos.coords.longitude];
                 userMarker.setLatLng(userPos);
 
                 if (routingControl) map.removeControl(routingControl);
-                
-                // Simulation d'une destination pour le test (Lieux.json normalement)
-                const dest = [5.3550, -4.0200]; 
+                const dest = [5.3270, -4.0200]; // Exemple : Plateau
 
                 routingControl = L.Routing.control({
                     waypoints: [L.latLng(userPos), L.latLng(dest)],
@@ -166,32 +129,20 @@
                     lineOptions: { styles: [{ color: currentMode === 'car' ? '#1a73e8' : '#27ae60', weight: 7 }] }
                 }).on('routesfound', e => {
                     const r = e.routes[0];
-                    const d = (r.summary.totalDistance/1000).toFixed(1) + " km";
-                    const t = Math.round(r.summary.totalTime/60) + " min";
-                    document.getElementById('bizStats').innerText = `${d} (${t})`;
-                    document.getElementById('navKm').innerText = d; 
-                    document.getElementById('navMin').innerText = t;
-                    
-                    document.getElementById('loader').style.display = 'none';
-                    document.getElementById('searchUI').style.display = 'none';
-                    document.getElementById('bizUI').style.display = 'block';
+                    document.getElementById('resStats').innerText = `${(r.summary.totalDistance/1000).toFixed(1)} km (${Math.round(r.summary.totalTime/60)} min)`;
+                    document.getElementById('resultSheet').style.display = 'block';
                 }).addTo(map);
-                map.fitBounds([userPos, dest], { padding: [50, 50] });
+                map.fitBounds([userPos, dest], { padding: [40, 40] });
             });
         }
 
-        function demarrerNav() {
-            document.getElementById('bizUI').style.display = 'none';
-            document.getElementById('navHeader').style.display = 'block';
-            document.getElementById('exitNav').style.display = 'flex';
+        function lancerNav() {
+            document.getElementById('resultSheet').style.display = 'none';
             map.setView(userPos, 19, { animate: true });
         }
 
-        function quitterNavigation() {
-            document.getElementById('navHeader').style.display = 'none';
-            document.getElementById('exitNav').style.display = 'none';
-            document.getElementById('bizUI').style.display = 'none';
-            document.getElementById('searchUI').style.display = 'block';
+        function fermerResultat() {
+            document.getElementById('resultSheet').style.display = 'none';
             if (routingControl) map.removeControl(routingControl);
             map.setView([5.3484, -4.0305], 13);
         }
